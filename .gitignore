@@ -1,0 +1,47 @@
+# Dependencies and Next.js output
+/node_modules/
+/.next/
+/out/
+/dist/
+/build/
+/coverage/
+*.tsbuildinfo
+next-env.d.ts
+
+# Local configuration and credentials
+.env*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Logs, caches, and local data
+*.log
+*.db
+*.sqlite*
+*.bak
+__pycache__/
+.pytest_cache/
+/tmp/
+
+# Local agent work and review artifacts
+/.agents/
+/.audit/
+/.codex/
+/.codex-temp/
+/.codex-work/
+/.superpowers/
+/artifacts/
+/deliverables/
+/outputs/
+/qa-artifacts/
+/docs/superpowers/
+/docs/design-references/
+/public/__qa__/
+/public/images/generated/
+/design-qa.md
+/website-structure-audit-2026-07-15.md
+
+# Separate, unrelated local project
+/quant_finance_pipeline/

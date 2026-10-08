@@ -1,0 +1,201 @@
+.panel {
+  max-height: calc(100dvh - 4rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-top: 2px solid #3347B8;
+  border-bottom: 1px solid color-mix(in srgb, #0B132B 15%, transparent);
+  background: #FFF;
+  background: color-mix(in srgb, #3347B8 3%, #FFF);
+  color: #0B132B;
+  box-shadow: 0 28px 56px -38px
+    color-mix(in srgb, #0B132B 42%, transparent);
+}
+
+.container {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.grid {
+  min-height: 390px;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.78fr) minmax(
+      0,
+      0.78fr
+    );
+  gap: 0;
+}
+
+.column {
+  min-width: 0;
+  padding: 36px 34px 40px;
+}
+
+.column:first-child {
+  background: #F6F3EC;
+}
+
+.secondaryColumn {
+  border-left: 1px solid color-mix(in srgb, #0B132B 13%, transparent);
+}
+
+.exploreLabel,
+.primaryColumnTitle,
+.columnTitle {
+  margin: 0;
+}
+
+.exploreLabel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #3347B8;
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.exploreLabel::before {
+  width: 24px;
+  height: 1px;
+  content: "";
+  background: currentColor;
+}
+
+.primaryColumnTitle {
+  margin-top: 9px;
+  color: #6B7280;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.035em;
+}
+
+.columnTitle {
+  color: color-mix(in srgb, #0B132B 58%, #6B7280);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.025em;
+}
+
+.linkList {
+  gap: 1px;
+  margin-top: 18px;
+}
+
+.primaryLinkList {
+  margin-top: 20px;
+}
+
+.link {
+  min-width: 0;
+  padding: 12px 11px;
+  border-left: 1px solid transparent;
+  border-radius: 2px;
+  color: #0B132B;
+  text-decoration: none;
+  transition: border-color 160ms ease, background-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.primaryLink {
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
+.link:hover {
+  border-left-color: #3347B8;
+  background: color-mix(in srgb, #3347B8 8%, #FFF);
+  box-shadow: inset 1px 0 #3347B8;
+}
+
+.column:first-child .link:hover {
+  background: color-mix(in srgb, #F6F3EC 94%, #0B132B);
+}
+
+.link:focus-visible {
+  outline: 3px solid #3347B8;
+  outline-offset: -2px;
+  background: color-mix(in srgb, #3347B8 8%, #FFF);
+}
+
+.link > span {
+  min-width: 0;
+}
+
+.linkTitle {
+  display: block;
+  color: #0B132B;
+  font-size: 14px;
+  font-weight: 680;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  transition: color 160ms ease;
+}
+
+.primaryLinkTitle {
+  color: #0B132B;
+  font-size: 20px;
+  font-weight: 690;
+  line-height: 1.32;
+  letter-spacing: -0.018em;
+}
+
+.link:hover .linkTitle,
+.link:focus-visible .linkTitle {
+  color: color-mix(in srgb, #3347B8 72%, #0B132B);
+}
+
+.linkDescription {
+  display: block;
+  margin-top: 6px;
+  color: #6B7280;
+  font-size: 12px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.primaryLinkDescription {
+  max-width: 34em;
+  color: #6B7280;
+  font-size: 13px;
+  line-height: 1.68;
+}
+
+.arrow {
+  color: #6B7280;
+  stroke-width: 1.75;
+  transition: color 160ms ease, transform 160ms ease;
+}
+
+.column:first-child .primaryColumnTitle,
+.column:first-child .primaryLinkDescription,
+.column:first-child .arrow {
+  color: #0B132B;
+  color: color-mix(in srgb, #6B7280 75%, #0B132B);
+}
+
+.link:hover .arrow,
+.link:focus-visible .arrow {
+  color: #3347B8;
+  transform: translate(2px, -2px);
+}
+
+@media (min-width: 1024px) and (max-width: 1199px) {
+  .column {
+    padding-right: 22px;
+    padding-left: 22px;
+  }
+
+  .primaryLinkTitle {
+    font-size: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel,
+  .link,
+  .linkTitle,
+  .arrow {
+    transition: none !important;
+  }
+}

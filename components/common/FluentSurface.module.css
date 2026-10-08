@@ -1,0 +1,101 @@
+.standard,
+.data,
+.elevated,
+.media,
+.control,
+.icon {
+  border: 1px solid var(--sb-border-glass);
+  box-shadow: var(--sb-shadow-standard);
+  -webkit-backdrop-filter: blur(20px) saturate(120%);
+  backdrop-filter: blur(20px) saturate(120%);
+}
+
+.standard {
+  border-radius: var(--sb-panel-radius);
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.data {
+  border-radius: var(--sb-panel-radius);
+  background: rgba(237, 243, 255, 0.62);
+}
+
+.elevated {
+  border-radius: var(--sb-panel-radius-elevated);
+  background: rgba(255, 255, 255, 0.74);
+  box-shadow: var(--sb-shadow-elevated);
+}
+
+.media {
+  border-radius: var(--sb-panel-radius-elevated);
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: var(--sb-shadow-media);
+}
+
+.control {
+  border-radius: var(--sb-control-radius);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.icon {
+  border-radius: var(--sb-icon-radius);
+  background: rgba(237, 243, 255, 0.78);
+}
+
+@supports not ((backdrop-filter: blur(20px)) or (-webkit-backdrop-filter: blur(20px))) {
+  .standard,
+  .elevated,
+  .control {
+    background: #ffffff;
+  }
+
+  .data,
+  .media,
+  .icon {
+    background: #edf3ff;
+  }
+}
+
+@media (max-width: 809px) {
+  .standard,
+  .data,
+  .elevated,
+  .media {
+    border-radius: var(--sb-panel-radius-mobile);
+  }
+
+  .standard,
+  .data,
+  .elevated,
+  .media,
+  .control,
+  .icon {
+    -webkit-backdrop-filter: blur(15px) saturate(120%);
+    backdrop-filter: blur(15px) saturate(120%);
+    box-shadow: var(--sb-shadow-mobile);
+  }
+
+  .elevated,
+  .media {
+    box-shadow: var(--sb-shadow-mobile-elevated);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .standard,
+  .data,
+  .elevated,
+  .media,
+  .control,
+  .icon {
+    transition: none !important;
+  }
+
+  .standard,
+  .data,
+  .elevated,
+  .media,
+  .control {
+    transform: none !important;
+  }
+}

@@ -1,0 +1,432 @@
+.root {
+  --hamster-cycle: 1s;
+  --hamster-iterations: 3;
+  position: relative;
+  width: 12em;
+  height: 12em;
+  margin: 0 auto 1.25rem;
+  font-size: 14px;
+  pointer-events: none;
+  user-select: none;
+}
+
+.wheel,
+.hamster,
+.body,
+.head,
+.ear,
+.eye,
+.nose,
+.limb,
+.tail,
+.spoke {
+  position: absolute;
+}
+
+.wheel,
+.spoke {
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+}
+
+.wheel {
+  z-index: 2;
+  background: radial-gradient(
+    100% 100% at center,
+    rgb(143 163 184 / 0%) 47.8%,
+    rgb(143 163 184) 48%
+  );
+}
+
+.hamster,
+.head,
+.ear,
+.eye,
+.body,
+.frontRight,
+.frontLeft,
+.backRight,
+.backLeft,
+.tail,
+.spoke {
+  animation-duration: var(--hamster-cycle);
+  animation-iteration-count: var(--hamster-iterations);
+  animation-fill-mode: forwards;
+}
+
+.hamster {
+  top: 50%;
+  left: calc(50% - 3.5em);
+  z-index: 1;
+  width: 7em;
+  height: 3.75em;
+  transform: rotate(4deg) translate(-0.8em, 1.85em);
+  transform-origin: 50% 0;
+  animation-name: hamsterRun;
+  animation-timing-function: ease-in-out;
+}
+
+.head {
+  top: 0;
+  left: -2em;
+  width: 2.75em;
+  height: 2.5em;
+  border-radius: 70% 30% 0 100% / 40% 25% 25% 60%;
+  background: hsl(30deg 90% 55%);
+  box-shadow:
+    0 -0.25em 0 hsl(30deg 90% 80%) inset,
+    0.75em -1.55em 0 hsl(30deg 90% 90%) inset;
+  transform: rotate(0deg);
+  transform-origin: 100% 50%;
+  animation-name: hamsterHead;
+  animation-timing-function: ease-in-out;
+}
+
+.ear {
+  top: -0.25em;
+  right: -0.25em;
+  width: 0.75em;
+  height: 0.75em;
+  border-radius: 50%;
+  background: hsl(18deg 78% 84%);
+  box-shadow: -0.25em 0 hsl(30deg 90% 55%) inset;
+  transform: rotate(0deg);
+  transform-origin: 50% 75%;
+  animation-name: hamsterEar;
+  animation-timing-function: ease-in-out;
+}
+
+.eye {
+  top: 0.375em;
+  left: 1.25em;
+  width: 0.5em;
+  height: 0.5em;
+  border-radius: 50%;
+  background: hsl(215deg 28% 22%);
+  transform: scaleY(1);
+  animation-name: hamsterEye;
+  animation-timing-function: linear;
+}
+
+.nose {
+  top: 0.75em;
+  left: 0;
+  width: 0.2em;
+  height: 0.25em;
+  border-radius: 35% 65% 85% 15% / 70% 50% 50% 30%;
+  background: hsl(18deg 72% 70%);
+}
+
+.body {
+  top: 0.25em;
+  left: 2em;
+  width: 4.5em;
+  height: 3em;
+  border-radius: 50% 30% 50% 30% / 15% 60% 40% 40%;
+  background: hsl(30deg 90% 90%);
+  box-shadow:
+    0.1em 0.75em 0 hsl(30deg 90% 55%) inset,
+    0.15em -0.5em 0 hsl(30deg 90% 80%) inset;
+  transform: rotate(0deg);
+  transform-origin: 17% 50%;
+  transform-style: preserve-3d;
+  animation-name: hamsterBody;
+  animation-timing-function: ease-in-out;
+}
+
+.frontRight,
+.frontLeft {
+  top: 2em;
+  left: 0.5em;
+  width: 1em;
+  height: 1.5em;
+  clip-path: polygon(0 0, 100% 0, 70% 80%, 60% 100%, 0 100%, 40% 80%);
+  transform-origin: 50% 0;
+  animation-timing-function: linear;
+}
+
+.frontRight {
+  background: linear-gradient(
+    hsl(30deg 90% 80%) 80%,
+    hsl(18deg 72% 70%) 80%
+  );
+  transform: rotate(50deg) translateZ(-1px);
+  animation-name: hamsterFrontRight;
+}
+
+.frontLeft {
+  background: linear-gradient(
+    hsl(30deg 90% 90%) 80%,
+    hsl(18deg 78% 84%) 80%
+  );
+  transform: rotate(-30deg);
+  animation-name: hamsterFrontLeft;
+}
+
+.backRight,
+.backLeft {
+  top: 1em;
+  left: 2.8em;
+  width: 1.5em;
+  height: 2.5em;
+  border-radius: 0.75em 0.75em 0 0;
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% 30%,
+    70% 90%,
+    70% 100%,
+    30% 100%,
+    40% 90%,
+    0 30%
+  );
+  transform-origin: 50% 30%;
+  animation-timing-function: linear;
+}
+
+.backRight {
+  background: linear-gradient(
+    hsl(30deg 90% 80%) 90%,
+    hsl(18deg 72% 70%) 90%
+  );
+  transform: rotate(-60deg) translateZ(-1px);
+  animation-name: hamsterBackRight;
+}
+
+.backLeft {
+  background: linear-gradient(
+    hsl(30deg 90% 90%) 90%,
+    hsl(18deg 78% 84%) 90%
+  );
+  transform: rotate(20deg);
+  animation-name: hamsterBackLeft;
+}
+
+.tail {
+  top: 1.5em;
+  right: -0.5em;
+  width: 1em;
+  height: 0.5em;
+  border-radius: 0.25em 50% 50% 0.25em;
+  background: hsl(18deg 78% 84%);
+  box-shadow: 0 -0.2em 0 hsl(18deg 72% 70%) inset;
+  transform: rotate(30deg) translateZ(-1px);
+  transform-origin: 0.25em 0.25em;
+  animation-name: hamsterTail;
+  animation-timing-function: linear;
+}
+
+.spoke {
+  background:
+    radial-gradient(
+      100% 100% at center,
+      hsl(211deg 24% 62%) 4.8%,
+      hsl(211deg 24% 62% / 0%) 5%
+    ),
+    linear-gradient(
+        hsl(211deg 24% 58% / 0%) 46.9%,
+        hsl(211deg 24% 69%) 47% 52.9%,
+        hsl(211deg 24% 69% / 0%) 53%
+      )
+      50% 50% / 99% 99% no-repeat;
+  transform: rotate(0deg);
+  animation-name: wheelSpoke;
+  animation-timing-function: linear;
+}
+
+@keyframes hamsterRun {
+  from,
+  to {
+    transform: rotate(4deg) translate(-0.8em, 1.85em);
+  }
+
+  50% {
+    transform: rotate(0deg) translate(-0.8em, 1.85em);
+  }
+}
+
+@keyframes hamsterHead {
+  from,
+  25%,
+  50%,
+  75%,
+  to {
+    transform: rotate(0deg);
+  }
+
+  12.5%,
+  37.5%,
+  62.5%,
+  87.5% {
+    transform: rotate(8deg);
+  }
+}
+
+@keyframes hamsterEye {
+  from,
+  90%,
+  to {
+    transform: scaleY(1);
+  }
+
+  95% {
+    transform: scaleY(0);
+  }
+}
+
+@keyframes hamsterEar {
+  from,
+  25%,
+  50%,
+  75%,
+  to {
+    transform: rotate(0deg);
+  }
+
+  12.5%,
+  37.5%,
+  62.5%,
+  87.5% {
+    transform: rotate(12deg);
+  }
+}
+
+@keyframes hamsterBody {
+  from,
+  25%,
+  50%,
+  75%,
+  to {
+    transform: rotate(0deg);
+  }
+
+  12.5%,
+  37.5%,
+  62.5%,
+  87.5% {
+    transform: rotate(-2deg);
+  }
+}
+
+@keyframes hamsterFrontRight {
+  from,
+  25%,
+  50%,
+  75%,
+  to {
+    transform: rotate(50deg) translateZ(-1px);
+  }
+
+  12.5%,
+  37.5%,
+  62.5%,
+  87.5% {
+    transform: rotate(-30deg) translateZ(-1px);
+  }
+}
+
+@keyframes hamsterFrontLeft {
+  from,
+  25%,
+  50%,
+  75%,
+  to {
+    transform: rotate(-30deg);
+  }
+
+  12.5%,
+  37.5%,
+  62.5%,
+  87.5% {
+    transform: rotate(50deg);
+  }
+}
+
+@keyframes hamsterBackRight {
+  from,
+  25%,
+  50%,
+  75%,
+  to {
+    transform: rotate(-60deg) translateZ(-1px);
+  }
+
+  12.5%,
+  37.5%,
+  62.5%,
+  87.5% {
+    transform: rotate(20deg) translateZ(-1px);
+  }
+}
+
+@keyframes hamsterBackLeft {
+  from,
+  25%,
+  50%,
+  75%,
+  to {
+    transform: rotate(20deg);
+  }
+
+  12.5%,
+  37.5%,
+  62.5%,
+  87.5% {
+    transform: rotate(-60deg);
+  }
+}
+
+@keyframes hamsterTail {
+  from,
+  25%,
+  50%,
+  75%,
+  to {
+    transform: rotate(30deg) translateZ(-1px);
+  }
+
+  12.5%,
+  37.5%,
+  62.5%,
+  87.5% {
+    transform: rotate(10deg) translateZ(-1px);
+  }
+}
+
+@keyframes wheelSpoke {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(-1turn);
+  }
+}
+
+@media (max-width: 639px) {
+  .root {
+    font-size: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root,
+  .wheel,
+  .hamster,
+  .body,
+  .head,
+  .ear,
+  .eye,
+  .nose,
+  .frontRight,
+  .frontLeft,
+  .backRight,
+  .backLeft,
+  .tail,
+  .spoke {
+    animation: none !important;
+  }
+}

@@ -1,0 +1,163 @@
+.section {
+  overflow: hidden;
+  padding-block: clamp(56px, 5.5vw, 80px) clamp(64px, 6vw, 88px);
+  background: #ffffff;
+  color: #0b132b;
+}
+
+.container,
+.intro,
+.processList,
+.processItem,
+.stepBody {
+  min-width: 0;
+}
+
+.intro {
+  max-width: 800px;
+}
+
+.processList {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin: clamp(38px, 4vw, 52px) 0 0;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  list-style: none;
+}
+
+.processItem {
+  position: relative;
+  padding: 24px;
+  text-align: left;
+}
+
+.markerTrack {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.stepNode {
+  display: inline-flex;
+  width: 46px;
+  height: 46px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #3347b8;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #273a91;
+  font-size: 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.12em;
+  box-shadow: none;
+}
+
+.stepBody {
+  padding-top: 24px;
+}
+
+.recordStatus {
+  display: inline-flex;
+  min-height: 26px;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid rgb(51 71 184 / 20%);
+  border-radius: 8px;
+  padding: 4px 9px;
+  background: #fff;
+  color: #273a91;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+}
+
+.recordStatus::before {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  content: "";
+  background: #3347b8;
+}
+
+.stepTitle {
+  margin: 14px 0 0;
+  color: #0b132b;
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.stepDescription {
+  margin: 9px 0 0;
+  color: rgb(11 19 43 / 66%);
+  font-size: 14px;
+  line-height: 1.72;
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 720px) and (max-width: 1279px) {
+  .processList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stepDescription {
+    line-height: 1.72;
+  }
+}
+
+@media (max-width: 719px) {
+  .section {
+    padding-block: 56px 64px;
+  }
+
+  .processList {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+    margin-top: 38px;
+    padding: 0;
+  }
+
+  .processItem {
+    display: grid;
+    grid-template-columns: 46px minmax(0, 1fr);
+    gap: 18px;
+    padding: 26px;
+    text-align: left;
+  }
+
+  .markerTrack {
+    justify-content: flex-start;
+  }
+
+  .stepNode {
+    width: 44px;
+    height: 44px;
+  }
+
+  .stepBody {
+    padding-top: 0;
+  }
+
+  .recordStatus {
+    min-height: 24px;
+  }
+
+  .stepTitle {
+    margin-top: 14px;
+    font-size: 18px;
+  }
+
+  .stepDescription {
+    max-width: 40em;
+    margin-top: 9px;
+    font-size: 14px;
+  }
+}

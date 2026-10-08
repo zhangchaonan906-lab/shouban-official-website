@@ -1,0 +1,18 @@
+.section {
+  position: relative;
+  min-width: 0;
+  overflow: clip;
+  padding-block-start: var(--sb-section-landing);
+  padding-block-end: calc(var(--sb-section-tail) + var(--sb-handoff-height));
+}
+
+.section > * {
+  min-width: 0;
+}
+
+@media (max-width: 809px) {
+  .section {
+    padding-block-start: 56px;
+    padding-block-end: 50px;
+  }
+}

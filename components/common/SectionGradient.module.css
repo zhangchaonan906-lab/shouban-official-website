@@ -1,0 +1,53 @@
+.horizonToBlue,
+.whiteToBlue,
+.blueToIvory,
+.ivoryToWhite,
+.blueToWhite,
+.blueWash,
+.ivoryWash {
+  position: relative;
+  isolation: isolate;
+  background-repeat: no-repeat;
+}
+
+.horizonToBlue,
+.whiteToBlue,
+.blueToIvory,
+.ivoryToWhite,
+.blueToWhite {
+  background-position: center bottom;
+  background-size: 100% var(--sb-handoff-height);
+}
+
+.horizonToBlue {
+  background-color: var(--sb-mist);
+  background-image: linear-gradient(180deg, #f4f8ff 0%, var(--sb-air) 52%, var(--sb-mist) 100%);
+}
+
+.whiteToBlue {
+  background-color: var(--sb-white);
+  background-image: linear-gradient(180deg, var(--sb-white) 0%, var(--sb-air) 56%, var(--sb-mist) 100%);
+}
+
+.blueToIvory {
+  background-color: var(--sb-mist);
+  background-image: linear-gradient(180deg, var(--sb-mist) 0%, var(--sb-air) 58%, var(--sb-ivory) 100%);
+}
+
+.ivoryToWhite {
+  background-color: var(--sb-ivory);
+  background-image: linear-gradient(180deg, var(--sb-ivory) 0%, var(--sb-air) 58%, var(--sb-white) 100%);
+}
+
+.blueToWhite {
+  background-color: var(--sb-mist);
+  background-image: linear-gradient(180deg, var(--sb-mist) 0%, var(--sb-air) 58%, var(--sb-white) 100%);
+}
+
+.blueWash {
+  background-image: linear-gradient(180deg, var(--sb-air) 0%, var(--sb-air) 32%, var(--sb-mist) 66%, var(--sb-air) 100%);
+}
+
+.ivoryWash {
+  background-image: linear-gradient(180deg, var(--sb-ivory) 0%, var(--sb-ivory) 32%, var(--sb-air) 66%, var(--sb-ivory) 100%);
+}
