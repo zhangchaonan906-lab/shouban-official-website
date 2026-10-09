@@ -11,7 +11,8 @@ import surfaceStyles from "@/components/common/FluentSurface.module.css";
 
 export const metadata: Metadata = createPageMetadata(
   trustIntro.title,
-  trustIntro.description
+  trustIntro.description,
+  "/trust"
 );
 
 export default function TrustPage() {

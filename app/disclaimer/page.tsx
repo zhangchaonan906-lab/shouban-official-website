@@ -9,7 +9,11 @@ import surfaceStyles from "@/components/common/FluentSurface.module.css";
 
 const page = legalPages.disclaimer;
 
-export const metadata: Metadata = createPageMetadata(page.title, page.description);
+export const metadata: Metadata = createPageMetadata(
+  page.title,
+  page.description,
+  "/disclaimer"
+);
 
 export default function DisclaimerPage() {
   return (

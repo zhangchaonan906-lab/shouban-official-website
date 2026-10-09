@@ -14,7 +14,8 @@ import surfaceStyles from "@/components/common/FluentSurface.module.css";
 
 export const metadata: Metadata = createPageMetadata(
   solutionsIntro.title,
-  solutionsIntro.description
+  solutionsIntro.description,
+  "/solutions"
 );
 
 export default function SolutionsPage() {

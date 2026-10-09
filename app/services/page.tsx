@@ -9,7 +9,11 @@ import { pageIntros } from "@/content/company";
 import { services } from "@/content/services";
 import { createPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = createPageMetadata(pageIntros.services.title, pageIntros.services.description);
+export const metadata: Metadata = createPageMetadata(
+  pageIntros.services.title,
+  pageIntros.services.description,
+  "/services"
+);
 
 export default function ServicesPage() {
   return (

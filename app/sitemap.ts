@@ -1,18 +1,17 @@
 import type { MetadataRoute } from "next";
 import { researchItems } from "@/content/research";
-import { routes, siteUrl } from "@/lib/constants";
+import { routes } from "@/lib/constants";
+import { canonicalUrl } from "@/lib/seo";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const staticRoutes = routes.map((route) => ({
-    url: `${siteUrl}${route}`,
-    lastModified: new Date("2026-07-15"),
+    url: canonicalUrl(route),
     changeFrequency: route === "/" ? ("weekly" as const) : ("monthly" as const),
     priority: route === "/" ? 1 : 0.7
   }));
 
   const researchRoutes = researchItems.map((item) => ({
-    url: `${siteUrl}/news/${item.slug}`,
-    lastModified: new Date(item.date),
+    url: canonicalUrl(`/news/${item.slug}`),
     changeFrequency: "monthly" as const,
     priority: 0.6
   }));

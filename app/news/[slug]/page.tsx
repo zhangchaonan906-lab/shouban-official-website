@@ -20,10 +20,14 @@ export async function generateMetadata({ params }: NewsDetailPageProps): Promise
   const item = getResearchItem(slug);
 
   if (!item) {
-    return createPageMetadata("新闻与研究", "首版认证新闻与研究内容");
+    return {
+      title: "新闻与研究",
+      description: "首版认证新闻与研究内容",
+      robots: { index: false, follow: true }
+    };
   }
 
-  return createPageMetadata(item.title, item.summary);
+  return createPageMetadata(item.title, item.summary, `/news/${item.slug}`);
 }
 
 export default async function NewsDetailPage({ params }: NewsDetailPageProps) {

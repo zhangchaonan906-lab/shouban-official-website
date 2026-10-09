@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Container } from "@/components/common/Container";
 import surfaceStyles from "@/components/common/FluentSurface.module.css";
@@ -6,6 +7,11 @@ import { InteriorPageFrame } from "@/components/common/InteriorPageFrame";
 import { SectionBand } from "@/components/common/SectionBand";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
+export const metadata: Metadata = {
+  title: "页面未找到",
+  robots: { index: false, follow: true }
+};
 
 export default function NotFound() {
   return (

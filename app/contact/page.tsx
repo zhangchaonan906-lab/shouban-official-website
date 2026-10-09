@@ -9,7 +9,11 @@ import { pageIntros } from "@/content/company";
 import { getContactCollectionReadiness } from "@/lib/privacy-readiness.server";
 import { createPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = createPageMetadata(pageIntros.contact.title, pageIntros.contact.description);
+export const metadata: Metadata = createPageMetadata(
+  pageIntros.contact.title,
+  pageIntros.contact.description,
+  "/contact"
+);
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 

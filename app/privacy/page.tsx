@@ -18,13 +18,13 @@ export function generateMetadata(): Metadata {
 
   if (!readiness.ready) {
     return {
-      ...createPageMetadata("隐私政策草案", page.description),
+      ...createPageMetadata("隐私政策草案", page.description, "/privacy"),
       robots: { index: false, follow: true }
     };
   }
 
   return {
-    ...createPageMetadata(page.title, page.effectiveDescription),
+    ...createPageMetadata(page.title, page.effectiveDescription, "/privacy"),
     robots: { index: true, follow: true }
   };
 }

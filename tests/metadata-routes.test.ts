@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import robots from "../app/robots";
 import sitemap from "../app/sitemap";
 import nextConfig from "../next.config";
-import { siteUrl } from "../lib/constants";
+import { canonicalUrl } from "../lib/seo";
 
 const noStoreHeader = {
   key: "Cache-Control",
@@ -14,7 +14,7 @@ const noStoreHeader = {
 describe("privacy metadata routes", () => {
   it("keeps privacy in the static sitemap without coupling it to runtime readiness", () => {
     const privacyEntries = sitemap().filter(
-      (entry) => entry.url === `${siteUrl}/privacy`
+      (entry) => entry.url === canonicalUrl("/privacy")
     );
     const source = readFileSync(
       join(process.cwd(), "app", "sitemap.ts"),
@@ -32,7 +32,7 @@ describe("privacy metadata routes", () => {
         userAgent: "*",
         allow: "/"
       },
-      sitemap: `${siteUrl}/sitemap.xml`
+      sitemap: canonicalUrl("/sitemap.xml")
     });
   });
 
