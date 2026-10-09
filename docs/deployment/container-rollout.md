@@ -1,60 +1,66 @@
-# Standalone Docker/Caddy Deployment Preparation
+# Standalone Docker and Caddy Deployment Preparation
 
-> Template only. This change does not create or modify an ECS instance, Docker daemon, Caddy service, DNS record, certificate, security group, or production secret.
+> This PR is deployment preparation only. No ECS host or production Caddy service, DNS record, certificate, security group, production secret, or Feishu assistant was inspected or changed. CI creates only disposable isolated Docker networks and Caddy test containers.
 
-## Runtime shape
+## Current deployment block
 
-- next.config.ts enables Next.js standalone output.
-- Dockerfile installs from the lockfile, builds with Node 24, and runs the traced standalone server as an unprivileged user. The base currently uses the Node 24 Bookworm slim tag; pin its verified image digest before a production release.
-- scripts/container-entrypoint.mjs executes scripts/privacy-release-check.mjs before starting server.js. A nonzero check exits before the web process starts.
-- GET /api/health is a no-store liveness endpoint. It reports only { "status": "ok" }; it does not claim that privacy, SMTP, or release readiness has been approved.
-- compose.yaml runs only this site. It binds the app to loopback port 3100 by default and has no fixed container name, public HTTP port, or shared external network.
-- deploy/caddy/shouban-site.Caddyfile.example is a per-site reverse-proxy template with the reserved .invalid host. It is not included in or loaded by Compose.
+The current production Caddy container's network mode, attached Docker networks, Compose project/configuration, config-loading path, and Caddy version have not been verified. This workspace has no SSH configuration or ECS connection environment. Do not apply the network template or start the site until an authorized operator completes the read-only checks below and confirms that the additive bridge-network design matches the actual topology.
 
-When this template is applied, the app will be reachable on the ECS host at 127.0.0.1:3100; a separately approved Caddy site configuration can proxy to that address. Do not replace or edit a shared Caddy configuration as part of this preparation. This separation keeps the Feishu assistant's existing Caddy sites and ports outside this project's Compose stack.
+Read-only checks on the ECS host, using a locally resolved Caddy container name and without printing Caddyfile contents or environment values:
 
-## Build and runtime configuration
+```sh
+docker inspect --format 'mode={{.HostConfig.NetworkMode}} networks={{json .NetworkSettings.Networks}} project={{index .Config.Labels "com.docker.compose.project"}} service={{index .Config.Labels "com.docker.compose.service"}} config_files={{index .Config.Labels "com.docker.compose.project.config_files"}}' "$CADDY_CONTAINER"
+docker inspect --format 'entrypoint={{json .Config.Entrypoint}} command={{json .Config.Cmd}} mount_destinations={{range .Mounts}}{{.Destination}} {{end}}' "$CADDY_CONTAINER"
+docker exec "$CADDY_CONTAINER" caddy version
+```
 
-Set NEXT_PUBLIC_SITE_URL to the approved HTTPS origin for the build; this public value is used while Next.js generates metadata and sitemap output. Do not put SMTP or privacy-operation secrets in build arguments.
+Do not publish the container's environment, mounted file contents, or full expanded Compose configuration. Confirm which mounted Caddyfile is loaded and how per-site snippets are included before considering a rollout.
 
-At runtime, set SHOUBAN_RUNTIME_ENV_FILE to an absolute path outside the repository and provide it to Compose as the site's protected environment file. Keep that file out of Git and Docker build context, restrict filesystem access, and do not print its contents or the expanded docker compose config output.
+## Proposed network shape
 
-The existing release check requires these runtime keys and valid, mutually consistent values:
+The application Compose service joins one explicitly named external bridge network and publishes no host port. It has the Docker DNS alias `shouban-web`; the Caddy site template proxies to `shouban-web:3000`. This works only when the Caddy container is also attached to that same bridge network.
 
-- Public/site and policy facts: NEXT_PUBLIC_SITE_URL, PRIVACY_CONTACT_EMAIL, PRIVACY_POLICY_EFFECTIVE_DATE, PRIVACY_HOSTING_PROVIDER_NAME, PRIVACY_HOSTING_PRODUCT_NAME, PRIVACY_HOSTING_LOCATION, PRIVACY_SMTP_RELAY_PROVIDER_NAME, PRIVACY_SMTP_RELAY_LOCATION, PRIVACY_CONTACT_MAILBOX_PROVIDER_NAME, PRIVACY_CONTACT_MAILBOX_LOCATION, PRIVACY_RIGHTS_MAILBOX_PROVIDER_NAME, PRIVACY_RIGHTS_MAILBOX_LOCATION, PRIVACY_MAIL_DELETION_METHOD.
-- Contact delivery: CONTACT_TO_EMAIL, SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM.
-- Release evidence: SERVICE_VERSION_ID, PRIVACY_OPERATIONS_ATTESTATION_ID, PRIVACY_OPERATIONS_APPROVED_AT, PRIVACY_OPERATIONS_OWNER, PRIVACY_ATTESTED_SERVICE_VERSION_ID, PRIVACY_ATTESTED_SITE_ORIGIN, PRIVACY_ATTESTED_PUBLIC_SNAPSHOT_ID.
+The network is dedicated to Caddy and this site. When the actual Caddy topology is confirmed, add the network to Caddy's existing Compose service while retaining every existing network attachment. Leave the Feishu assistant on its existing network. Do not replace the Caddy container's network list, use `host.docker.internal`, or assume that `127.0.0.1` inside Caddy means the ECS host.
 
-The EDGEONE_* group in .env.example remains optional only when EdgeOne is not enabled. If EdgeOne is enabled, complete its documented evidence and regenerate the privacy snapshot and attestation. The entrypoint must not be removed or replaced by a direct node server.js command.
+The app Compose file expects an existing Docker bridge network named by `SHOUBAN_PROXY_NETWORK`. Caddy's own Compose project must join the same external network through a separately reviewed additive overlay. The production overlay and network are intentionally not created here. If Caddy uses `network_mode: host`, it cannot join this bridge; stop and redesign from the observed topology. Do not fall back to a host gateway without confirming the app bind address, firewall, routing, and exposure.
 
-For a later candidate release, the approved operator should:
+The CI integration test creates separate disposable bridge networks. A mock Caddy and mock upstream communicate through the `shouban-web` DNS alias; an unrelated assistant sentinel on another network remains unresolved. This proves Docker bridge DNS and isolation behavior in that test topology only. It does not prove production Caddy is attached to the required network.
 
-1. Build an immutable image reference from the reviewed commit SHA, pass the approved public site origin as the build argument, and pin the verified Node base image digest.
-2. Supply the protected runtime environment file without adding it to the image or repository.
-3. Run npm run privacy:snapshot, complete the documented operational evidence and bindings, then verify npm run release:check in the candidate environment.
-4. Start the container only after the release check passes. The container entrypoint runs the same check again before serving requests.
-5. Verify the container health status and the approved /contact, /privacy, and /api/contact behaviors. Keep the contact collection gate closed until the policy and SMTP acceptance steps are complete.
+## Container image and release gate
 
-No placeholder or synthetic privacy attestation may be used to make the release check pass.
+- The Dockerfile pins Node 24 Bookworm slim to multi-platform index digest `sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20` from the [official Node image](https://hub.docker.com/_/node).
+- The image is built with a public, reserved `.invalid` site origin in CI. The origin is written to `.build-site-origin`; startup compares it exactly with runtime `NEXT_PUBLIC_SITE_URL` before running the existing release check. A mismatch exits without starting the server.
+- The CI image inspection checks that the standalone server, origin marker, health route output, and release-check modules exist; the image user is `nextjs` (UID 1001), and no `.env` file or runtime credentials are packaged.
+- A matching-origin test with no release evidence reaches the real `privacy-release-check.mjs`, fails on missing required production configuration, and confirms the web server did not start. CI does not provide SMTP credentials or generate privacy-operation approval evidence.
+- The `/api/health` route is a no-store liveness response only. Route unit tests cover it; the gated container cannot become healthy without genuine release configuration. The proxy test does not claim to be a complete production application or SMTP test.
 
-## Compose and Caddy preparation
+The build stage sets `NEXT_PUBLIC_SITE_URL`, which Next.js uses when producing canonical metadata and sitemap content. CI checks the built homepage and sitemap contain the build origin, confirms the marker matches it, and tests that a different runtime origin is rejected. For a candidate release, supply the same approved HTTPS origin at build and runtime.
 
-Compose publishes only 127.0.0.1:3100 on the host by default. It does not claim ports 80/443, create a Caddy container, or alter other applications. Keep the Caddy upstream port synchronized with SHOUBAN_APP_PORT if it is changed.
+## Resource and log limits
 
-The Caddy template applies a 16 KiB request-body cap to /api/contact, matching the application limit. Caddy documents request_body as experimental and available in v2.10.0+; pin and validate the exact Caddy version before deployment: https://caddyserver.com/docs/caddyfile/directives/request_body. The template does not enable access logs or caching. Before production, configure approved log retention without request bodies and verify no-store headers remain intact.
+The Compose service configures 1 CPU, 1536 MiB memory, and 256 PIDs. CI creates the container without starting the app and inspects the effective Docker Engine limits, then runs the container under the same limits with the release configuration absent and verifies that the gate exits. This verifies Docker applied the limits; it is not an application load test. Capacity under a genuinely approved release configuration remains unmeasured and must be checked before production.
 
-The Caddy example uses shouban.example.invalid intentionally. Before a separately authorized deployment, copy it into the per-site include directory, replace the reserved host with the approved domain, validate the complete Caddy configuration, and reload using the host's established change procedure. Do not run those steps during this preparation.
+The app container uses Docker's `json-file` log driver with `max-size=10m` and `max-file=3`, bounding its stdout/stderr logs to about 30 MB. The Caddy template does not enable access logging, and the contact application logs request outcome metadata without request bodies. The existing production Caddy container's driver, rotation settings, and access-log configuration remain unknown. Before rollout, inspect those settings and apply an approved rotation policy in Caddy's own Compose project; do not log form bodies.
 
-The container healthcheck requests http://127.0.0.1:3000/api/health every 30 seconds, with a 20-second start period and three retries. The endpoint is process liveness only; the release gate prevents the server from starting when required privacy configuration or evidence is missing.
+## Caddy validation and compatibility
 
-## Rollback
+The isolated CI test pins the official Caddy [`2.10.2-alpine` image](https://hub.docker.com/_/caddy) to digest `sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d`; the version is recorded in the [official v2.10.2 release](https://github.com/caddyserver/caddy/releases/tag/v2.10.2). It runs `caddy adapt` and `caddy validate` on the template and an HTTP-only test copy with a second simulated site. It then tests DNS upstream connection, route matching, repeated requests without proxy caching, no-store header forwarding on `/contact`, `/privacy`, and `/api/contact`, the 16 KiB `/api/contact` request cap, and absence of a request-body sentinel from Caddy logs.
 
-Use immutable image tags and retain the currently deployed and previous known-good images.
+The Caddy `request_body` directive is experimental and requires Caddy v2.10.0 or newer ([official directive documentation](https://caddyserver.com/docs/caddyfile/directives/request_body)). CI's pinned Caddy version validates only the test environment. The production Caddy version has not been inspected, so compatibility remains a release blocker. Do not upgrade production Caddy as part of this PR.
 
-1. Record the currently active image tag and its source commit before a rollout.
-2. After an approved rollout, wait for Compose to report the service healthy and run the approved route smoke checks.
-3. If the healthcheck or smoke checks fail, set SHOUBAN_IMAGE back to the recorded previous image tag and point SHOUBAN_RUNTIME_ENV_FILE at the matching protected environment/attestation file, then recreate only this site's web service with the same Compose project.
-4. Confirm the previous service is healthy, verify the site's public routes, and preserve the failed image and logs for review under the approved retention policy.
-5. Do not change DNS, certificates, security groups, or the Feishu assistant as a rollback shortcut.
+If the observed production Caddy does not support `request_body`, use the existing application-side streaming limit `CONTACT_MAX_BODY_BYTES = 16384` as the authoritative cap and prepare a Caddyfile variant without that experimental directive. Validate that exact variant against the observed production binary before rollout. Keep the request-body cap and application validation enabled; do not make an unsupported directive silently disappear during deployment.
 
-This project currently has no application database migration or local persistent business data, so rollback consists of restoring the previous immutable image and its matching release environment/attestation. If those facts change, the rollback plan must be revised before release.
+No Caddy cache directive is configured. In CI, repeated requests reach the mock upstream separately, and its no-store response headers pass through. This validates the pinned standard Caddy image and test config, not unknown production Caddy modules or snippets.
+
+## Rollout and rollback conditions
+
+Before any later authorized rollout:
+
+1. Complete the read-only production Caddy topology/version/config-load checks above and select a compatible network/configuration plan.
+2. Create or confirm the dedicated bridge network and attach Caddy additively without detaching its current networks; leave Feishu unchanged.
+3. Use an immutable application image built from the reviewed commit and pin the verified Node base digest.
+4. Supply the protected runtime environment file from outside the repository. Do not put it in the image, Compose build args, or CI.
+5. Complete genuine privacy operations evidence and verify `npm run release:check` in the candidate environment. The container entrypoint repeats the check before serving.
+6. Verify the Compose resource/log settings, health check, canonical origin, sitemap origin, `/contact`, `/privacy`, and `/api/contact` with the approved release candidate. SMTP acceptance remains a separate controlled test.
+
+Keep immutable current and previous images. For rollback, restore the previous image together with its matching protected runtime environment and attestation. Do not alter DNS, certificates, security groups, Caddy's existing networks, or the Feishu assistant as a shortcut.

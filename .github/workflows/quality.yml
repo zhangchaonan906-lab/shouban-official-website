@@ -49,3 +49,6 @@ jobs:
 
       - name: Audit dependencies
         run: npm audit
+
+      - name: Build and verify isolated Docker and Caddy deployment path
+        run: bash ./scripts/verify-container-caddy.sh

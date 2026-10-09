@@ -1,5 +1,25 @@
+import { readFileSync } from "node:fs";
 import { spawn, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+
+const buildSiteOriginPath = fileURLToPath(
+  new URL("../.build-site-origin", import.meta.url)
+);
+let buildSiteOrigin;
+try {
+  buildSiteOrigin = readFileSync(buildSiteOriginPath, "utf8").trim();
+} catch {
+  process.stderr.write("CONTAINER_BUILD_SITE_ORIGIN_MISSING\n");
+  process.exit(1);
+}
+
+if (
+  buildSiteOrigin === "" ||
+  process.env.NEXT_PUBLIC_SITE_URL !== buildSiteOrigin
+) {
+  process.stderr.write("CONTAINER_SITE_ORIGIN_MISMATCH\n");
+  process.exit(1);
+}
 
 const releaseCheckPath = fileURLToPath(
   new URL("./privacy-release-check.mjs", import.meta.url)

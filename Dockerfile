@@ -1,4 +1,4 @@
-FROM node:24-bookworm-slim AS base
+FROM node:24-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20 AS base
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 
@@ -11,7 +11,9 @@ ARG NEXT_PUBLIC_SITE_URL
 ENV NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN test -n "$NEXT_PUBLIC_SITE_URL" && npm run build
+RUN test -n "$NEXT_PUBLIC_SITE_URL" \
+  && npm run build \
+  && printf '%s' "$NEXT_PUBLIC_SITE_URL" > .next/standalone/.build-site-origin
 
 FROM base AS runner
 ENV NODE_ENV=production

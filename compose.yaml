@@ -14,14 +14,26 @@ services:
       NODE_ENV: production
       HOSTNAME: 0.0.0.0
       PORT: "3000"
+    networks:
+      proxy:
+        aliases:
+          - shouban-web
+    expose:
+      - "3000"
     init: true
     restart: unless-stopped
+    cpus: "1.0"
+    mem_limit: 1536m
+    pids_limit: 256
     security_opt:
       - no-new-privileges:true
     cap_drop:
       - ALL
-    ports:
-      - "127.0.0.1:${SHOUBAN_APP_PORT:-3100}:3000"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
       test:
         - CMD
@@ -33,3 +45,8 @@ services:
       retries: 3
       start_period: 20s
     stop_grace_period: 30s
+
+networks:
+  proxy:
+    external: true
+    name: ${SHOUBAN_PROXY_NETWORK:?Set the dedicated external proxy network name}

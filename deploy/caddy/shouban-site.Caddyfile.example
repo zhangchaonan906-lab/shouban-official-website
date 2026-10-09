@@ -12,5 +12,5 @@ shouban.example.invalid {
 		X-Frame-Options SAMEORIGIN
 	}
 
-	reverse_proxy 127.0.0.1:3100
+	reverse_proxy shouban-web:3000
 }

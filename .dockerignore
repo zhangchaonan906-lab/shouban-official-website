@@ -8,4 +8,12 @@ dist
 docs
 tests
 .env*
+*.pem
+*.key
+*.p12
+*.pfx
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
 *.log
