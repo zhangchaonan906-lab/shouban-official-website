@@ -70,7 +70,7 @@ jobs:
 
       - name: Validate isolated Caddy site template
         run: |
-          docker run --rm --network none \
+          docker run --rm --network none --entrypoint caddy \
             --env SHOUBAN_SITE_DOMAIN=deployment-validation.invalid \
             --volume "$PWD/deploy/caddy:/etc/caddy:ro" \
             caddy:2.10.2 validate --config /etc/caddy/validate.Caddyfile --adapter caddyfile
