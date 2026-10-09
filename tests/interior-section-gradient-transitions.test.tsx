@@ -26,7 +26,7 @@ function gradientVariants(source: string) {
 }
 
 function ruleDeclarations(path: string, selector: string) {
-  const root = postcss.parse(read(path));
+  const root = postcss.parse(read(path).replace(/\r\n/g, "\n"));
   const declarations = new Map<string, string>();
 
   root.walkRules(selector, (rule) => {
