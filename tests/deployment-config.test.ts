@@ -69,6 +69,12 @@ describe("deployment templates", () => {
     expect(verifier).toContain("CONTAINER_SITE_ORIGIN_MISMATCH");
     expect(verifier).toContain('--entrypoint caddy "$CADDY_IMAGE" run --config');
     expect(verifier).toContain('trap on_error ERR');
+    expect(verifier).not.toContain('echo "- Web image: `$WEB_IMAGE`"');
+    expect(verifier).not.toContain('echo "- Node base digest: `$NODE_DIGEST`"');
+    expect(verifier).not.toContain('echo "- Caddy test image digest: `$CADDY_DIGEST`"');
+    expect(verifier).toContain('echo "- Web image: $WEB_IMAGE"');
+    expect(verifier).toContain('echo "- Node base digest: $NODE_DIGEST"');
+    expect(verifier).toContain('echo "- Caddy test image digest: $CADDY_DIGEST"');
 
     const upstream = read("tests/fixtures/proxy-upstream.mjs");
     expect(upstream).toContain('error?.code === \"ECONNRESET\"');

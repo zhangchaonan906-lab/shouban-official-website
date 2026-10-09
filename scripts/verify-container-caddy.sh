@@ -284,9 +284,9 @@ printf 'Container build and release-gate checks passed.\nCaddy %s isolated proxy
 if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
   {
     echo '### Isolated container and proxy verification'
-    echo "- Web image: `$WEB_IMAGE`"
-    echo "- Node base digest: `$NODE_DIGEST`"
-    echo "- Caddy test image digest: `$CADDY_DIGEST`"
+    echo "- Web image: $WEB_IMAGE"
+    echo "- Node base digest: $NODE_DIGEST"
+    echo "- Caddy test image digest: $CADDY_DIGEST"
     echo '- Image runtime user and required standalone files verified; no `.env` file or runtime credentials were present.'
     echo '- Compose limits verified: 1 CPU, 1536 MiB RAM, 256 PIDs, JSON logs capped at 10 MiB × 3 files.'
     echo '- Homepage canonical URL, sitemap URLs, build-origin marker, and runtime origin consistency verified.'
