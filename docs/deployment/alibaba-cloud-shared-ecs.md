@@ -92,6 +92,12 @@ Caddy 不承担联系接口公网限频。联系 API 必须在 EdgeOne 或经业
 - npm start 原有 prestart 生命周期和 release:check 保留。/contact 与 /privacy 的 force-dynamic、revalidate=0 及现有 no-store 响应边界不得移除。
 - CI 可验证门禁失败时容器快速退出；目前没有真实邮箱、隐私事实、EdgeOne 记录和人工证明，因此真实生产门禁成功、健康运行及真实邮件验收必须保持 BLOCKED。禁止使用虚构环境值让发布检查通过。
 
+### 隔离 Docker 网络组件测试
+
+CI 在临时 `--internal` Docker 网络中运行 Next.js 和 Caddy 2.10.2，不发布宿主机端口。组件测试仅通过 `docker run --entrypoint node ... server.js` 启动已构建 standalone 服务，目的是验证服务和 DNS/反代路径；这是显式隔离的 CI 组件测试，不是生产容器启动流程，不更改 Dockerfile 的 production `ENTRYPOINT`，也不向生产 Compose 添加入口覆盖。真实生产入口仍由独立 CI 测试验证 fail-closed。
+
+测试客户端经 Docker DNS 请求 Caddy：根路径预期 200；联系 API 使用合成非个人信息请求并预期因缺少真实发布条件返回 503，不发送邮件。日志检查只读取该临时 Caddy 容器的 CI 合成日志，检查请求头、查询、请求体、Cookie、授权头、合成及实际临时客户端 IP 与脱敏字段都未保留；测试结束删除临时容器和网络。它证明模板在该版本、该隔离拓扑中的行为，不代表生产域名、TLS、EdgeOne 或真实合规验收通过。
+
 ## 7. 只读部署前检查与验收顺序
 
 1. 飞书助手负责人批准共享主机、单独网络、Caddy 新增站点、资源上限、变更窗口、现场观察人与回滚负责人。
@@ -111,11 +117,12 @@ Caddy 不承担联系接口公网限频。联系 API 必须在 EdgeOne 或经业
 
 ### 仅官网镜像/应用异常
 
-1. 停止推进新流量；不停止 Caddy、助手或 Workbench。
-2. 将官网版本变量恢复到记录的前一不可变镜像 digest，恢复相同的运行时配置路径与批准 Origin。
-3. 仅对官网 Compose project 执行经批准的单服务替换，不执行 docker compose down、全局 prune 或其他项目操作。
-4. 等待官网健康检查通过；用 GET/HEAD 验证页面及三路由 no-store。
-5. 记录当前/恢复镜像 digest、状态码、健康状态、时间和负责人。
+1. 每次发布记录一条不可变的上一版发布描述：镜像必须为 `registry/repository@sha256:<64位摘要>`；同时记录该版运行时 env 文件的绝对版本路径及文件 SHA-256。env 文件内容仍是受保护秘密，不复制进描述记录或日志。
+2. 回滚计划必须从同一条上一版发布描述选出镜像、运行时文件和文件摘要；计划返回的 `SHOUBAN_IMAGE`、`SHOUBAN_RUNTIME_ENV_FILE`、`SHOUBAN_PROXY_NETWORK` 会显式覆盖 Compose 插值，不能仅依赖可变 `.env` 或当前发布的 env 文件。
+3. 经负责人批准后，先对所选版本文件计算 SHA-256 并与发布描述比对；不一致、文件缺失或路径不是版本化绝对路径时停止。文件应由受控身份只读保存，校验后不要替换。
+4. 停止推进新流量；不停止 Caddy、助手或 Workbench。用回滚计划中明确返回的环境值及 Compose 参数，只对官网服务执行单服务替换，不执行 `docker compose down`、全局 prune 或其他项目操作。
+5. 等待官网健康检查通过；用 GET/HEAD 验证页面及三路由 no-store。
+6. 记录当前/恢复镜像 digest、运行时配置摘要、状态码、健康状态、时间和负责人；不要记录 env 文件内容。
 
 ### Caddy 导入/网络导致反代异常
 

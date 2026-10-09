@@ -54,6 +54,10 @@ jobs:
 
       - name: Check deployment shell syntax
         run: sh -n scripts/deployment/preflight.sh scripts/deployment/acceptance.sh
+      - name: Check isolated CI test syntax
+        run: |
+          bash -n scripts/deployment/ci-network-test.sh
+          python3 -c 'import ast, pathlib; ast.parse(pathlib.Path("tests/deployment-caddy-log-check.py").read_text())'
 
       - name: Validate Compose deployment model and resource limits
         run: |
@@ -68,8 +72,20 @@ jobs:
               ((.services.website.ports // []) | length == 0)
             ' >/dev/null
 
-      - name: Validate isolated Caddy site template
+      - name: Check Caddyfile formatting
         run: |
+          for file in validate.Caddyfile shouban-site.caddy; do
+            docker run --rm --network none --entrypoint caddy \
+              --volume "$PWD/deploy/caddy:/etc/caddy:ro" \
+              caddy:2.10.2 fmt --diff "/etc/caddy/$file"
+          done
+
+      - name: Adapt and validate isolated Caddy site template
+        run: |
+          docker run --rm --network none --entrypoint caddy \
+            --env SHOUBAN_SITE_DOMAIN=deployment-validation.invalid \
+            --volume "$PWD/deploy/caddy:/etc/caddy:ro" \
+            caddy:2.10.2 adapt --config /etc/caddy/validate.Caddyfile --adapter caddyfile --pretty >/dev/null
           docker run --rm --network none --entrypoint caddy \
             --env SHOUBAN_SITE_DOMAIN=deployment-validation.invalid \
             --volume "$PWD/deploy/caddy:/etc/caddy:ro" \
@@ -79,10 +95,13 @@ jobs:
         run: |
           docker build --pull \
             --file deploy/Dockerfile \
-          --tag shouban-official-website:ci \
-          --build-arg NEXT_PUBLIC_SITE_URL=https://deployment-validation.invalid \
-          --build-arg BUILD_SHA="$GITHUB_SHA" \
-          .
+            --tag shouban-official-website:ci \
+            --build-arg NEXT_PUBLIC_SITE_URL=https://deployment-validation.invalid \
+            --build-arg BUILD_SHA="$GITHUB_SHA" \
+            .
+
+      - name: Verify isolated Docker DNS proxy and Caddy log redaction
+        run: bash scripts/deployment/ci-network-test.sh
 
       - name: Verify missing production proof blocks container startup
         run: |

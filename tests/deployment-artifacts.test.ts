@@ -134,30 +134,127 @@ describe("Aliyun standalone deployment invariants", () => {
     await expect(isHealthy(throwingFetch)).resolves.toBe(false);
   });
 
-  it("creates a human-approved rollback plan for an immutable prior image only", () => {
+  it("binds a prior digest image to its exact versioned runtime config", () => {
+    const previousRelease = {
+      image: "registry.invalid/site@sha256:" + "a".repeat(64),
+      runtimeEnvFile: "/etc/shouban/releases/v17/runtime.env",
+      runtimeEnvSha256: "b".repeat(64)
+    };
     const plan = createRollbackPlan({
-      previousImage: "registry.invalid/site@sha256:" + "a".repeat(64),
+      previousRelease,
       composeFile: "/opt/site/compose.website.yml",
-      composeEnvFile: "/etc/site/compose.env"
+      proxyNetwork: "shouban-proxy"
     });
 
     expect(plan.ok).toBe(true);
-    if (!plan.ok) throw new Error("valid immutable rollback plan rejected");
+    if (!plan.ok) throw new Error("valid previous release rejected");
     expect(plan.requiresHumanApproval).toBe(true);
+    expect(plan.selectedRelease).toEqual(previousRelease);
+    expect(plan.environment).toEqual({
+      SHOUBAN_IMAGE: previousRelease.image,
+      SHOUBAN_RUNTIME_ENV_FILE: previousRelease.runtimeEnvFile,
+      SHOUBAN_PROXY_NETWORK: "shouban-proxy"
+    });
+    expect(plan.runtimeConfigVerification).toEqual({
+      path: previousRelease.runtimeEnvFile,
+      sha256: previousRelease.runtimeEnvSha256
+    });
     expect(plan.composeArgs).toContain("--no-deps");
     expect(plan.composeArgs).toContain("website");
     expect(plan.composeArgs).not.toContain("down");
+    expect(plan.composeArgs).not.toContain("--env-file");
+  });
+
+  it("rejects mutable SHA-looking tags and digest references", () => {
+    for (const image of [
+      "registry.invalid/site:latest",
+      "registry.invalid/site:" + "a".repeat(40),
+      "registry.invalid/site@sha256:1234"
+    ]) {
+      expect(
+        createRollbackPlan({
+          previousRelease: {
+            image,
+            runtimeEnvFile: "/etc/shouban/releases/v17/runtime.env",
+            runtimeEnvSha256: "b".repeat(64)
+          },
+          composeFile: "/opt/site/compose.website.yml",
+          proxyNetwork: "shouban-proxy"
+        })
+      ).toEqual({ ok: false, code: "ROLLBACK_IMAGE_REFERENCE_NOT_DIGEST" });
+    }
+  });
+
+  it("rejects malformed image, runtime config, and Compose inputs", () => {
+    const validRelease = {
+      image: "registry.invalid/site@sha256:" + "a".repeat(64),
+      runtimeEnvFile: "/etc/shouban/releases/v17/runtime.env",
+      runtimeEnvSha256: "b".repeat(64)
+    };
 
     expect(
       createRollbackPlan({
-        previousImage: "registry.invalid/site:latest",
-        composeFile: "compose.website.yml",
-        composeEnvFile: "compose.env"
+        previousRelease: { ...validRelease, image: "bad image@sha256:" + "a".repeat(64) },
+        composeFile: "/opt/site/compose.website.yml",
+        proxyNetwork: "shouban-proxy"
       })
-    ).toEqual({
+    ).toEqual({ ok: false, code: "ROLLBACK_IMAGE_REFERENCE_INVALID" });
+
+    expect(
+      createRollbackPlan({
+        previousRelease: { ...validRelease, image: "registry.invalid/Site@sha256:" + "a".repeat(64) },
+        composeFile: "/opt/site/compose.website.yml",
+        proxyNetwork: "shouban-proxy"
+      })
+    ).toEqual({ ok: false, code: "ROLLBACK_IMAGE_REFERENCE_INVALID" });
+
+    expect(
+      createRollbackPlan({
+        previousRelease: { ...validRelease, runtimeEnvFile: "runtime.env" },
+        composeFile: "/opt/site/compose.website.yml",
+        proxyNetwork: "shouban-proxy"
+      })
+    ).toEqual({ ok: false, code: "ROLLBACK_RUNTIME_CONFIG_INVALID" });
+
+    expect(
+      createRollbackPlan({
+        previousRelease: {
+          ...validRelease,
+          runtimeEnvFile: "/etc/shouban/releases/current/runtime.env"
+        },
+        composeFile: "/opt/site/compose.website.yml",
+        proxyNetwork: "shouban-proxy"
+      })
+    ).toEqual({ ok: false, code: "ROLLBACK_RUNTIME_CONFIG_INVALID" });
+
+    expect(
+      createRollbackPlan({
+        previousRelease: { ...validRelease, runtimeEnvSha256: "bad" },
+        composeFile: "/opt/site/compose.website.yml",
+        proxyNetwork: "shouban-proxy"
+      })
+    ).toEqual({ ok: false, code: "ROLLBACK_RUNTIME_CONFIG_INVALID" });
+
+    expect(
+      createRollbackPlan({
+        previousRelease: validRelease,
+        composeFile: "compose.website.yml",
+        proxyNetwork: "shouban-proxy"
+      })
+    ).toEqual({ ok: false, code: "ROLLBACK_COMPOSE_INPUT_INVALID" });
+
+    expect(createRollbackPlan(null as never)).toEqual({
       ok: false,
-      code: "ROLLBACK_IMAGE_REFERENCE_NOT_IMMUTABLE"
+      code: "ROLLBACK_PREVIOUS_RELEASE_MISSING"
     });
+
+    expect(
+      createRollbackPlan({
+        previousRelease: validRelease,
+        composeFile: "/opt/site/compose.website.yml",
+        proxyNetwork: "bad network name"
+      })
+    ).toEqual({ ok: false, code: "ROLLBACK_COMPOSE_INPUT_INVALID" });
   });
 
   it("uses a rootless Node 24 multistage image and a separate production Compose service", () => {
@@ -202,6 +299,31 @@ describe("Aliyun standalone deployment invariants", () => {
     expect(importHint).toContain("import /etc/caddy/sites-enabled/*.caddy");
   });
 
+  it("tests Docker DNS proxying and log redaction only in an isolated CI component", () => {
+    const workflow = read(".github/workflows/quality.yml");
+    const componentTest = read("scripts/deployment/ci-network-test.sh");
+    const probe = read("tests/deployment-proxy-probe.mjs");
+    const logCheck = read("tests/deployment-caddy-log-check.py");
+    const productionImage = read("deploy/Dockerfile");
+
+    expect(workflow).toContain("Verify isolated Docker DNS proxy and Caddy log redaction");
+    expect(workflow).toContain("scripts/deployment/ci-network-test.sh");
+    expect(workflow).toContain("caddy:2.10.2 fmt --diff");
+    expect(workflow).toContain("caddy:2.10.2 adapt");
+    expect(componentTest).toContain("CI-only component smoke test");
+    expect(componentTest).toContain("docker network create --internal");
+    expect(componentTest).toContain("--entrypoint node");
+    expect(componentTest).toContain("caddy:2.10.2");
+    expect(componentTest).toContain("tests/deployment-caddy-log-check.py");
+    expect(probe).toContain("SYNTHETIC_COOKIE");
+    expect(probe).toContain("SYNTHETIC_QUERY");
+    expect(logCheck).toContain("remote_ip");
+    expect(logCheck).toContain("client_ip");
+    expect(productionImage).toContain(
+      'ENTRYPOINT ["node", "/app/scripts/deployment/start-standalone.mjs"]'
+    );
+  });
+
   it("keeps host preflight and acceptance checks read-only", () => {
     const preflight = read("scripts/deployment/preflight.sh");
     const acceptance = read("scripts/deployment/acceptance.sh");
@@ -221,8 +343,10 @@ describe("Aliyun standalone deployment invariants", () => {
   it("documents an immutable image rollback without destructive project cleanup", () => {
     const runbook = read("docs/deployment/alibaba-cloud-shared-ecs.md");
 
-    expect(runbook).toContain("前一不可变镜像 digest");
-    expect(runbook).toContain("不执行 docker compose down");
+    expect(runbook).toContain("registry/repository@sha256:<64位摘要>");
+    expect(runbook).toContain("SHOUBAN_RUNTIME_ENV_FILE");
+    expect(runbook).toContain("文件 SHA-256");
+    expect(runbook).toContain("不执行 `docker compose down`");
     expect(runbook).toContain("回滚");
     expect(runbook).toContain("业务负责人");
   });
