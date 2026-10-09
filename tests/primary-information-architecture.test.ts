@@ -4,7 +4,8 @@ import { describe, expect, it } from "vitest";
 import { primaryNavigation, secondaryNavigation } from "../content/navigation";
 import { solutions } from "../content/solutions";
 import sitemap from "../app/sitemap";
-import { routes, siteUrl } from "../lib/constants";
+import { routes } from "../lib/constants";
+import { canonicalUrl } from "../lib/seo";
 
 describe("primary information architecture", () => {
   it("exposes the approved seven top-level destinations in order", () => {
@@ -31,8 +32,8 @@ describe("primary information architecture", () => {
     expect(routes).toContain("/trust");
 
     const sitemapUrls = sitemap().map((entry) => entry.url);
-    expect(sitemapUrls).toContain(`${siteUrl}/solutions`);
-    expect(sitemapUrls).toContain(`${siteUrl}/trust`);
+    expect(sitemapUrls).toContain(canonicalUrl("/solutions"));
+    expect(sitemapUrls).toContain(canonicalUrl("/trust"));
 
     const solutionsPage = readFileSync(
       join(process.cwd(), "app", "solutions", "page.tsx"),

@@ -10,7 +10,11 @@ import { researchItems } from "@/content/research";
 import { createPageMetadata } from "@/lib/seo";
 import surfaceStyles from "@/components/common/FluentSurface.module.css";
 
-export const metadata: Metadata = createPageMetadata(pageIntros.news.title, pageIntros.news.description);
+export const metadata: Metadata = createPageMetadata(
+  pageIntros.news.title,
+  pageIntros.news.description,
+  "/news"
+);
 
 export default function NewsPage() {
   return (

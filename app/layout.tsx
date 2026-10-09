@@ -4,10 +4,11 @@ import "./globals.css";
 import { Footer } from "@/components/layout/Footer";
 import { Navbar } from "@/components/layout/Navbar";
 import { company } from "@/content/company";
-import { siteUrl } from "@/lib/constants";
+import { canonicalUrl } from "@/lib/seo";
+import { siteOrigin } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
+  metadataBase: new URL(siteOrigin),
   title: {
     default: company.seoTitle,
     template: `%s｜${company.name}`
@@ -23,7 +24,8 @@ export const metadata: Metadata = {
     siteName: company.name,
     locale: "zh_CN",
     type: "website",
-    images: ["/images/shouban-hero.png"]
+    images: ["/images/shouban-hero.png"],
+    url: canonicalUrl("/")
   }
 };
 

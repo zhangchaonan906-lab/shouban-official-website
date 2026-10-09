@@ -14,6 +14,7 @@ import {
   PUBLIC_PRIVACY_POLICY,
   SENSITIVE_MATERIAL_WARNING
 } from "../lib/privacy-policy.mjs";
+import { canonicalUrl } from "../lib/seo";
 import * as privacyPolicyModule from "../lib/privacy-policy.mjs";
 
 vi.mock("@/lib/privacy-readiness.server", () => ({
@@ -105,6 +106,8 @@ describe("privacy page readiness states", () => {
     const metadata = generateMetadata();
     expect(metadata.title).toBe("隐私政策草案");
     expect(metadata.robots).toEqual({ index: false, follow: true });
+    expect(metadata.alternates?.canonical).toBe(canonicalUrl("/privacy"));
+    expect(metadata.openGraph?.url).toBe(canonicalUrl("/privacy"));
   });
 
   it("renders effective controller and actual deployed processor facts", () => {
@@ -141,6 +144,8 @@ describe("privacy page readiness states", () => {
     const metadata = generateMetadata();
     expect(metadata.title).toBe("隐私政策");
     expect(metadata.robots).not.toEqual(expect.objectContaining({ index: false }));
+    expect(metadata.alternates?.canonical).toBe(canonicalUrl("/privacy"));
+    expect(metadata.openGraph?.url).toBe(canonicalUrl("/privacy"));
   });
 
   it("discloses enabled EdgeOne using its actual retention and storage facts", () => {

@@ -11,7 +11,11 @@ import { company, pageIntros } from "@/content/company";
 import { createPageMetadata } from "@/lib/seo";
 import surfaceStyles from "@/components/common/FluentSurface.module.css";
 
-export const metadata: Metadata = createPageMetadata(pageIntros.about.title, pageIntros.about.description);
+export const metadata: Metadata = createPageMetadata(
+  pageIntros.about.title,
+  pageIntros.about.description,
+  "/about"
+);
 
 const capabilityBlocks = [
   {

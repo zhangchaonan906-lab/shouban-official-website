@@ -9,7 +9,11 @@ import { aiprModules, aiprPositioning, aiprPrinciples } from "@/content/aipr";
 import { createPageMetadata } from "@/lib/seo";
 import surfaceStyles from "@/components/common/FluentSurface.module.css";
 
-export const metadata: Metadata = createPageMetadata(aiprPositioning.name, aiprPositioning.description);
+export const metadata: Metadata = createPageMetadata(
+  aiprPositioning.name,
+  aiprPositioning.description,
+  "/aipr"
+);
 
 export default function AiprPage() {
   return (

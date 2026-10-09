@@ -8,7 +8,11 @@ import { complianceIntro, complianceTopics } from "@/content/compliance";
 import { createPageMetadata } from "@/lib/seo";
 import surfaceStyles from "@/components/common/FluentSurface.module.css";
 
-export const metadata: Metadata = createPageMetadata(complianceIntro.title, complianceIntro.description);
+export const metadata: Metadata = createPageMetadata(
+  complianceIntro.title,
+  complianceIntro.description,
+  "/compliance"
+);
 
 export default function CompliancePage() {
   return (
