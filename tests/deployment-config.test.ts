@@ -67,5 +67,6 @@ describe("deployment templates", () => {
     expect(verifier).toContain("docker build");
     expect(verifier).toContain("sitemap.xml.body");
     expect(verifier).toContain("CONTAINER_SITE_ORIGIN_MISMATCH");
+    expect(verifier).toContain('--entrypoint caddy "$CADDY_IMAGE" run --config');
   });
 });

@@ -177,7 +177,7 @@ docker run --detach --name "$CADDY" --network "$PROXY_NETWORK" \
   --publish 127.0.0.1:18080:8080 \
   --log-driver json-file --log-opt max-size=10m --log-opt max-file=3 \
   --mount "type=bind,src=${TEMP_DIR}/Caddyfile.integration,dst=/etc/caddy/Caddyfile,readonly" \
-  "$CADDY_IMAGE" run --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null
+  --entrypoint caddy "$CADDY_IMAGE" run --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null
 
 for attempt in $(seq 1 30); do
   if curl -fsS -H 'Host: shouban.example.invalid' http://127.0.0.1:18080/__hits >/dev/null; then
