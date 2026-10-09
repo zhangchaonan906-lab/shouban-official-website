@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
 
 readonly NODE_IMAGE='node:24-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20'
 readonly CADDY_IMAGE='caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d'
@@ -19,6 +19,7 @@ readonly TEMP_DIR="$(mktemp -d)"
 COMPOSE_ENV="${TEMP_DIR}/compose.env"
 RUNTIME_ENV="${TEMP_DIR}/runtime.env"
 COMPOSE_CREATED=0
+DIAGNOSE_CADDY=0
 
 cleanup() {
   if [[ "$COMPOSE_CREATED" == "1" ]]; then
@@ -30,6 +31,23 @@ cleanup() {
   rm -rf "$TEMP_DIR"
 }
 trap cleanup EXIT
+on_error() {
+  local status=$?
+  if [[ "${DIAGNOSE_CADDY:-0}" == "1" ]]; then
+    printf 'Caddy integration verifier failed near line %s.\n' "${BASH_LINENO[0]}" >&2
+    if docker inspect "$CADDY" >/dev/null 2>&1; then
+      echo 'Caddy internal log:' >&2
+      docker logs "$CADDY" >&2 || true
+      docker inspect --format 'Caddy state={{.State.Status}} network={{.HostConfig.NetworkMode}} attachments={{json .NetworkSettings.Networks}}' "$CADDY" >&2 || true
+    fi
+    if docker inspect "$UPSTREAM" >/dev/null 2>&1; then
+      docker inspect --format 'Mock upstream state={{.State.Status}} network={{.HostConfig.NetworkMode}} attachments={{json .NetworkSettings.Networks}}' "$UPSTREAM" >&2 || true
+      docker logs "$UPSTREAM" >&2 || true
+    fi
+  fi
+  return "$status"
+}
+trap on_error ERR
 
 docker pull "$NODE_IMAGE"
 docker pull "$CADDY_IMAGE"
@@ -111,6 +129,7 @@ fi
 docker rm "$WEB_CONTAINER" >/dev/null
 docker compose --env-file "$COMPOSE_ENV" -p "$PROJECT" -f compose.yaml down --remove-orphans >/dev/null
 COMPOSE_CREATED=0
+DIAGNOSE_CADDY=0
 
 set +e
 docker run --name "$ORIGIN_MISMATCH_CONTAINER" \
@@ -142,6 +161,7 @@ if grep -Eiq 'ready - started server|listening on' "${TEMP_DIR}/release-gate.log
 fi
 docker rm "$RELEASE_GATE_CONTAINER" >/dev/null
 
+DIAGNOSE_CADDY=1
 readonly CADDY_TEMPLATE="$PWD/deploy/caddy/shouban-site.Caddyfile.example"
 docker run --rm --entrypoint caddy \
   --mount "type=bind,src=${CADDY_TEMPLATE},dst=/tmp/site.Caddyfile,readonly" \

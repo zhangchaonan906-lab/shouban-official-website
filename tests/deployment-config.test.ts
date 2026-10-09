@@ -68,5 +68,6 @@ describe("deployment templates", () => {
     expect(verifier).toContain("sitemap.xml.body");
     expect(verifier).toContain("CONTAINER_SITE_ORIGIN_MISMATCH");
     expect(verifier).toContain('--entrypoint caddy "$CADDY_IMAGE" run --config');
+    expect(verifier).toContain('trap on_error ERR');
   });
 });
