@@ -26,7 +26,8 @@ type RollbackPlan =
         SHOUBAN_RUNTIME_ENV_FILE: string;
         SHOUBAN_PROXY_NETWORK: string;
       };
-      composeArgs: string[];
+      command: "env";
+      commandArgs: string[];
       requiresHumanApproval: true;
     };
 

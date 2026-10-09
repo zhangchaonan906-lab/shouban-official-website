@@ -159,10 +159,23 @@ describe("Aliyun standalone deployment invariants", () => {
       path: previousRelease.runtimeEnvFile,
       sha256: previousRelease.runtimeEnvSha256
     });
-    expect(plan.composeArgs).toContain("--no-deps");
-    expect(plan.composeArgs).toContain("website");
-    expect(plan.composeArgs).not.toContain("down");
-    expect(plan.composeArgs).not.toContain("--env-file");
+    expect(plan.command).toBe("env");
+    expect(plan.commandArgs).toEqual([
+      `SHOUBAN_IMAGE=${previousRelease.image}`,
+      `SHOUBAN_RUNTIME_ENV_FILE=${previousRelease.runtimeEnvFile}`,
+      "SHOUBAN_PROXY_NETWORK=shouban-proxy",
+      "docker",
+      "compose",
+      "-f",
+      "/opt/site/compose.website.yml",
+      "up",
+      "-d",
+      "--no-build",
+      "--no-deps",
+      "website"
+    ]);
+    expect(plan.commandArgs).not.toContain("down");
+    expect(plan.commandArgs).not.toContain("--env-file");
   });
 
   it("rejects mutable SHA-looking tags and digest references", () => {
@@ -345,6 +358,7 @@ describe("Aliyun standalone deployment invariants", () => {
 
     expect(runbook).toContain("registry/repository@sha256:<64位摘要>");
     expect(runbook).toContain("SHOUBAN_RUNTIME_ENV_FILE");
+    expect(runbook).toContain("env SHOUBAN_IMAGE=<上一版 digest>");
     expect(runbook).toContain("文件 SHA-256");
     expect(runbook).toContain("不执行 `docker compose down`");
     expect(runbook).toContain("回滚");

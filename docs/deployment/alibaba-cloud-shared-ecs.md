@@ -118,7 +118,7 @@ CI 在临时 `--internal` Docker 网络中运行 Next.js 和 Caddy 2.10.2，不�
 ### 仅官网镜像/应用异常
 
 1. 每次发布记录一条不可变的上一版发布描述：镜像必须为 `registry/repository@sha256:<64位摘要>`；同时记录该版运行时 env 文件的绝对版本路径及文件 SHA-256。env 文件内容仍是受保护秘密，不复制进描述记录或日志。
-2. 回滚计划必须从同一条上一版发布描述选出镜像、运行时文件和文件摘要；计划返回的 `SHOUBAN_IMAGE`、`SHOUBAN_RUNTIME_ENV_FILE`、`SHOUBAN_PROXY_NETWORK` 会显式覆盖 Compose 插值，不能仅依赖可变 `.env` 或当前发布的 env 文件。
+2. 回滚计划必须从同一条上一版发布描述选出镜像、运行时文件和文件摘要；返回的可执行参数以 `env SHOUBAN_IMAGE=<上一版 digest> SHOUBAN_RUNTIME_ENV_FILE=<上一版配置路径> SHOUBAN_PROXY_NETWORK=<专用网络> docker compose ...` 形式将这组三个值直接绑定到 Compose 命令，不能只返回未绑定配置的 Compose 参数，也不能依赖可变 `.env` 或当前发布的 env 文件。
 3. 经负责人批准后，先对所选版本文件计算 SHA-256 并与发布描述比对；不一致、文件缺失或路径不是版本化绝对路径时停止。文件应由受控身份只读保存，校验后不要替换。
 4. 停止推进新流量；不停止 Caddy、助手或 Workbench。用回滚计划中明确返回的环境值及 Compose 参数，只对官网服务执行单服务替换，不执行 `docker compose down`、全局 prune 或其他项目操作。
 5. 等待官网健康检查通过；用 GET/HEAD 验证页面及三路由 no-store。

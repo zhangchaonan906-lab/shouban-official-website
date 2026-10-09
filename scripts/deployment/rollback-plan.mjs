@@ -100,7 +100,12 @@ export function createRollbackPlan(options) {
       SHOUBAN_RUNTIME_ENV_FILE: selectedRelease.runtimeEnvFile,
       SHOUBAN_PROXY_NETWORK: proxyNetwork
     },
-    composeArgs: [
+    command: "env",
+    commandArgs: [
+      `SHOUBAN_IMAGE=${selectedRelease.image}`,
+      `SHOUBAN_RUNTIME_ENV_FILE=${selectedRelease.runtimeEnvFile}`,
+      `SHOUBAN_PROXY_NETWORK=${proxyNetwork}`,
+      "docker",
       "compose",
       "-f",
       composeFile,
