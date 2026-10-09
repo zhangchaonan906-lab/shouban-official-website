@@ -69,5 +69,9 @@ describe("deployment templates", () => {
     expect(verifier).toContain("CONTAINER_SITE_ORIGIN_MISMATCH");
     expect(verifier).toContain('--entrypoint caddy "$CADDY_IMAGE" run --config');
     expect(verifier).toContain('trap on_error ERR');
+
+    const upstream = read("tests/fixtures/proxy-upstream.mjs");
+    expect(upstream).toContain('error?.code === \"ECONNRESET\"');
+    expect(upstream.indexOf('for await')).toBeLessThan(upstream.indexOf('hits += 1'));
   });
 });

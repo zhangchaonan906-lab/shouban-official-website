@@ -12,9 +12,15 @@ createServer(async (request, response) => {
     return;
   }
 
-  hits += 1;
   let bodyBytes = 0;
-  for await (const chunk of request) bodyBytes += chunk.length;
+  try {
+    for await (const chunk of request) bodyBytes += chunk.length;
+  } catch (error) {
+    if (error?.code === "ECONNRESET") return;
+    throw error;
+  }
+
+  hits += 1;
 
   response.writeHead(200, {
     "Cache-Control": "private, no-store, max-age=0",
