@@ -47,10 +47,7 @@ describe("privacy metadata routes", () => {
     ]);
   });
 
-  it("does not change the deployment output mode", () => {
-    const source = readFileSync(join(process.cwd(), "next.config.ts"), "utf8");
-
-    expect(nextConfig.output).toBeUndefined();
-    expect(source).not.toMatch(/\bstandalone\b/);
+  it("uses standalone output for the deployment package", () => {
+    expect(nextConfig.output).toBe("standalone");
   });
 });

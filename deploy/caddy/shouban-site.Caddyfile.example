@@ -1,0 +1,16 @@
+shouban.example.invalid {
+	encode zstd gzip
+
+	@contact_api path /api/contact
+	request_body @contact_api {
+		max_size 16KB
+	}
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		X-Frame-Options SAMEORIGIN
+	}
+
+	reverse_proxy 127.0.0.1:3100
+}
