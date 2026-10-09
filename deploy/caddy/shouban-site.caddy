@@ -1,0 +1,34 @@
+{$SHOUBAN_SITE_DOMAIN} {
+	log {
+		output stdout
+		format filter {
+			wrap json
+			fields {
+				request>headers delete
+				request>uri delete
+				request>body delete
+				request>remote_ip delete
+				request>client_ip delete
+				resp_headers>Set-Cookie delete
+			}
+		}
+	}
+
+	@contact_post {
+		method POST
+		path /api/contact
+	}
+	request_body @contact_post {
+		max_size 16384
+	}
+
+	@private_no_store {
+		path /contact /contact/* /privacy /privacy/* /api/contact /api/contact/*
+	}
+	header @private_no_store >Cache-Control "private, no-store, max-age=0"
+	header -Server
+	header X-Content-Type-Options "nosniff"
+	header Referrer-Policy "strict-origin-when-cross-origin"
+
+	reverse_proxy shouban-website:3000
+}

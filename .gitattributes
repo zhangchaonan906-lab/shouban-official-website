@@ -1,0 +1,3 @@
+/scripts/deployment/*.sh text eol=lf
+/scripts/deployment/*.mjs text eol=lf
+/deploy/** text eol=lf

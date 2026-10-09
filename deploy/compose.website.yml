@@ -1,0 +1,48 @@
+services:
+  website:
+    image: ${SHOUBAN_IMAGE:?Set an immutable website image tag or digest}
+    pull_policy: never
+    init: true
+    restart: unless-stopped
+    user: "1000:1000"
+    environment:
+      NODE_ENV: production
+      HOSTNAME: 0.0.0.0
+      PORT: "3000"
+      NEXT_TELEMETRY_DISABLED: "1"
+      NODE_OPTIONS: --max-old-space-size=1024
+    env_file:
+      - ${SHOUBAN_RUNTIME_ENV_FILE:?Set the protected runtime environment file path}
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m,mode=1777
+      - /app/.next/cache:rw,noexec,nosuid,nodev,size=256m,uid=1000,gid=1000,mode=0750
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    cpus: 1.0
+    mem_limit: 1536m
+    memswap_limit: 1536m
+    pids_limit: 128
+    stop_grace_period: 20s
+    healthcheck:
+      test: ["CMD", "node", "/app/scripts/deployment/healthcheck.mjs"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      shouban-proxy:
+        aliases:
+          - shouban-website
+
+networks:
+  shouban-proxy:
+    external: true
+    name: ${SHOUBAN_PROXY_NETWORK:?Use the separately approved dedicated proxy network}

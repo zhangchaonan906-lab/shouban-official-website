@@ -1,0 +1,17 @@
+.git
+.github
+node_modules
+.next
+coverage
+docs
+tests
+deploy/*.env
+*.log
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
