@@ -42,3 +42,4 @@ if (contactResponse.status !== 503) {
 }
 
 process.stdout.write("CI_PROXY_DNS_HTTP_OK root=200 contact=503\n");
+await new Promise((resolve) => setTimeout(resolve, 3000));

@@ -72,10 +72,13 @@ docker create \
   --mount "type=bind,src=$PWD/tests/deployment-proxy-probe.mjs,dst=/deployment-proxy-probe.mjs,readonly" \
   --entrypoint node \
   "$website_image" /deployment-proxy-probe.mjs >/dev/null
-docker start --attach "$probe"
+docker start "$probe" >/dev/null
 
 client_ip="$(docker inspect --format "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}" "$probe")"
 [ -n "$client_ip" ] || { echo "CI_PROXY_CLIENT_IP_UNAVAILABLE" >&2; exit 1; }
+probe_status="$(docker wait "$probe")"
+[ "$probe_status" = "0" ] || { echo "CI_PROXY_PROBE_FAILED" >&2; exit 1; }
+docker logs "$probe"
 
 sleep 1
 docker logs "$caddy" > "$log_file" 2>/dev/null
