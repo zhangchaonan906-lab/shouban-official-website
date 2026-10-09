@@ -31,4 +31,4 @@ describe("container entrypoint", () => {
     );
     expect(result.stderr).not.toContain("MODULE_NOT_FOUND");
   });
-});\n
+});

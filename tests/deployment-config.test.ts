@@ -31,4 +31,4 @@ describe("deployment templates", () => {
     expect(dockerfile).toContain("privacy-release-check.mjs");
     expect(dockerfile).toContain("USER nextjs");
   });
-});\n
+});

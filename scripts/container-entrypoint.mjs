@@ -35,4 +35,4 @@ server.once("error", () => {
 
 server.once("exit", (code, signal) => {
   process.exitCode = code ?? (signal ? 1 : 0);
-});\n
+});

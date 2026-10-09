@@ -9,4 +9,4 @@ describe("health route", () => {
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(await response.json()).toEqual({ status: "ok" });
   });
-});\n
+});
