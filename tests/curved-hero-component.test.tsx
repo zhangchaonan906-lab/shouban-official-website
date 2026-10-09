@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { render, screen } from "@testing-library/react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -219,6 +220,30 @@ describe("CurvedHero", () => {
         `url("${curvedHeroCards[index].src}")`
       );
     });
+  });
+
+  it("preloads the full-bleed hero background as a high-priority image", () => {
+    const markup = renderToStaticMarkup(<CurvedHero />);
+
+    expect(markup).toMatch(
+      /<link rel="preload" href="\/images\/home\/home-hero-alwayzz\.webp" as="image" fetchPriority="high"\/>/
+    );
+  });
+
+  it("does not fetch offscreen fallback card photos on mobile", () => {
+    const mobileBlock = extractCssBlock(
+      curvedHeroStyles,
+      "@media (max-width: 767px)"
+    );
+
+    for (const slot of [2, 3, 4, 5, 6]) {
+      expect(
+        declarationsForSelector(
+          mobileBlock,
+          `.fallbackCard[data-slot="${slot}"]`
+        )
+      ).toContain("display: none");
+    }
   });
 
   it("keeps the canvas inert until the scene is ready", () => {

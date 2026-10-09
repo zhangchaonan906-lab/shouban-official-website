@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CurvedHeroCard } from "@/content/home";
 import type { CurvedHeroSceneController } from "@/lib/curved-hero-scene";
 import {
@@ -18,6 +18,15 @@ const POINTER_VELOCITY_MAX_AGE_MS = 100;
 
 export function CurvedHeroScene({ cards }: CurvedHeroSceneProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const sceneRequestedRef = useRef(false);
+  const autoRotationPausedRef = useRef(false);
+  const startSceneRef = useRef<(() => void) | null>(null);
+  const toggleAutoRotationRef = useRef<(() => void) | null>(null);
+  const [sceneStatus, setSceneStatus] = useState<"idle" | "loading" | "ready">(
+    "idle"
+  );
+  const [autoRotationPaused, setAutoRotationPaused] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(false);
 
   useEffect(() => {
     const currentCanvas = canvasRef.current;
@@ -49,6 +58,7 @@ export function CurvedHeroScene({ cards }: CurvedHeroSceneProps) {
     const motionQuery = window.matchMedia(
       "(prefers-reduced-motion: reduce)"
     );
+    setReducedMotion(motionQuery.matches);
     const autoRadiansPerSecond = (Math.PI / 4) * 0.11;
     const activeInputOptions: AddEventListenerOptions = { passive: false };
     const passiveOptions: AddEventListenerOptions = { passive: true };
@@ -64,6 +74,16 @@ export function CurvedHeroScene({ cards }: CurvedHeroSceneProps) {
       );
     }
 
+    function shouldContinueAnimation() {
+      return (
+        canAnimate() &&
+        (!autoRotationPausedRef.current ||
+          horizontalDrag ||
+          velocity !== 0 ||
+          Math.abs(targetRotation - currentRotation) > 0.0005)
+      );
+    }
+
     function stopFrame() {
       if (frameId === null) return;
       window.cancelAnimationFrame(frameId);
@@ -71,14 +91,14 @@ export function CurvedHeroScene({ cards }: CurvedHeroSceneProps) {
     }
 
     function requestNextFrame(resetClock: boolean) {
-      if (!canAnimate() || frameId !== null) return;
+      if (!shouldContinueAnimation() || frameId !== null) return;
       if (resetClock) lastFrameAt = performance.now();
       frameId = window.requestAnimationFrame(tick);
     }
 
     function tick(now: number) {
       const activeController = controller;
-      if (!canAnimate() || activeController === null) {
+      if (!shouldContinueAnimation() || activeController === null) {
         stopFrame();
         return;
       }
@@ -91,7 +111,10 @@ export function CurvedHeroScene({ cards }: CurvedHeroSceneProps) {
         lastFrameAt = now;
 
         if (activePointerId === null) {
-          if (now - lastInputAt > 1500) {
+          if (
+            !autoRotationPausedRef.current &&
+            now - lastInputAt > 1500
+          ) {
             targetRotation -= autoRadiansPerSecond * deltaSeconds;
           }
           targetRotation += velocity * deltaSeconds;
@@ -119,7 +142,12 @@ export function CurvedHeroScene({ cards }: CurvedHeroSceneProps) {
       if (window.innerWidth < 768) pointerParallaxX = 0;
 
       const activeController = controller;
-      if (activeController === null) return;
+      if (activeController === null) {
+        if (window.innerWidth >= 768 && !motionQuery.matches) {
+          startScene();
+        }
+        return;
+      }
 
       try {
         const bounds = canvas.getBoundingClientRect();
@@ -159,6 +187,9 @@ export function CurvedHeroScene({ cards }: CurvedHeroSceneProps) {
       resetCarouselState();
       canvas.removeAttribute("data-ready");
       safeDisposeController();
+      autoRotationPausedRef.current = false;
+      setAutoRotationPaused(false);
+      setSceneStatus("idle");
     }
 
     async function mount() {
@@ -194,6 +225,7 @@ export function CurvedHeroScene({ cards }: CurvedHeroSceneProps) {
         }
         mountingController.render(currentRotation, pointerParallaxX);
         canvas.dataset.ready = "true";
+        setSceneStatus("ready");
         requestNextFrame(true);
       } catch {
         if (mountingController === null || controller === mountingController) {
@@ -203,8 +235,47 @@ export function CurvedHeroScene({ cards }: CurvedHeroSceneProps) {
         mounting = false;
         if (remountAfterRestore) {
           remountAfterRestore = false;
-          void mount();
+          startScene();
         }
+      }
+    }
+
+    function startScene() {
+      if (
+        cancelled ||
+        motionQuery.matches ||
+        controller !== null ||
+        mounting
+      ) {
+        return;
+      }
+
+      sceneRequestedRef.current = true;
+      setSceneStatus("loading");
+      void mount();
+    }
+
+    function toggleAutoRotation() {
+      const activeController = controller;
+      if (activeController === null) return;
+
+      const nextPaused = !autoRotationPausedRef.current;
+      autoRotationPausedRef.current = nextPaused;
+      setAutoRotationPaused(nextPaused);
+
+      if (nextPaused) {
+        velocity = 0;
+        targetRotation = currentRotation;
+        pointerParallaxX = 0;
+        try {
+          activeController.render(currentRotation, pointerParallaxX);
+        } catch {
+          handleSceneFailure();
+          return;
+        }
+        stopFrame();
+      } else {
+        requestNextFrame(true);
       }
     }
 
@@ -236,6 +307,7 @@ export function CurvedHeroScene({ cards }: CurvedHeroSceneProps) {
       }
       markInput(now);
       resetPointer();
+      requestNextFrame(true);
     }
 
     function onPointerDown(event: PointerEvent) {
@@ -270,6 +342,14 @@ export function CurvedHeroScene({ cards }: CurvedHeroSceneProps) {
         pointerParallaxX = 0;
       }
 
+      if (autoRotationPausedRef.current && activePointerId === null) {
+        try {
+          controller?.render(currentRotation, pointerParallaxX);
+        } catch {
+          handleSceneFailure();
+        }
+      }
+
       if (event.pointerId !== activePointerId) return;
 
       const totalX = event.clientX - startX;
@@ -293,6 +373,7 @@ export function CurvedHeroScene({ cards }: CurvedHeroSceneProps) {
       lastX = event.clientX;
       lastPointerAt = now;
       markInput(now);
+      if (autoRotationPausedRef.current) requestNextFrame(true);
     }
 
     function finishPointer(event: PointerEvent) {
@@ -323,7 +404,16 @@ export function CurvedHeroScene({ cards }: CurvedHeroSceneProps) {
         }
         if (!hasCapture) finishPointerInteraction();
       }
-      if (activePointerId === null) pointerParallaxX = 0;
+      if (activePointerId === null) {
+        pointerParallaxX = 0;
+        if (autoRotationPausedRef.current) {
+          try {
+            controller?.render(currentRotation, 0);
+          } catch {
+            handleSceneFailure();
+          }
+        }
+      }
     }
 
     function onWheel(event: WheelEvent) {
@@ -343,6 +433,7 @@ export function CurvedHeroScene({ cards }: CurvedHeroSceneProps) {
       targetRotation += deltaRotation;
       velocity = deltaRotation * 3.5;
       markInput();
+      if (autoRotationPausedRef.current) requestNextFrame(true);
     }
 
     function onVisibilityChange() {
@@ -361,14 +452,15 @@ export function CurvedHeroScene({ cards }: CurvedHeroSceneProps) {
       contextLost = false;
       if (motionQuery.matches) return;
       if (mounting) remountAfterRestore = true;
-      else void mount();
+      else startScene();
     }
 
     function onMotionPreferenceChange(event: MediaQueryListEvent) {
+      setReducedMotion(event.matches);
       if (event.matches) {
         handleSceneFailure();
-      } else {
-        void mount();
+      } else if (window.innerWidth >= 768 || sceneRequestedRef.current) {
+        startScene();
       }
     }
 
@@ -405,11 +497,19 @@ export function CurvedHeroScene({ cards }: CurvedHeroSceneProps) {
     document.addEventListener("visibilitychange", onVisibilityChange);
     motionQuery.addEventListener("change", onMotionPreferenceChange);
 
-    void mount();
+    startSceneRef.current = startScene;
+    toggleAutoRotationRef.current = toggleAutoRotation;
+    if (window.innerWidth >= 768 && !motionQuery.matches) {
+      startScene();
+    }
 
     return () => {
       cancelled = true;
       remountAfterRestore = false;
+      startSceneRef.current = null;
+      toggleAutoRotationRef.current = null;
+      sceneRequestedRef.current = false;
+      autoRotationPausedRef.current = false;
       stopFrame();
       resizeObserver?.disconnect();
       intersectionObserver?.disconnect();
@@ -435,5 +535,32 @@ export function CurvedHeroScene({ cards }: CurvedHeroSceneProps) {
     };
   }, [cards]);
 
-  return <canvas ref={canvasRef} className={styles.canvas} aria-hidden="true" />;
+  const motionControlLabel = reducedMotion
+    ? "主视觉动画已按系统设置停用"
+    : sceneStatus === "loading"
+      ? "正在启动 3D 展示"
+      : sceneStatus === "ready"
+        ? autoRotationPaused
+          ? "恢复主视觉自动旋转"
+          : "暂停主视觉自动旋转"
+        : "启动 3D 展示";
+
+  return (
+    <>
+      <button
+        type="button"
+        className={styles.motionControl}
+        data-curved-hero-motion-control
+        aria-label={motionControlLabel}
+        disabled={reducedMotion || sceneStatus === "loading"}
+        onClick={() => {
+          if (sceneStatus === "idle") startSceneRef.current?.();
+          else if (sceneStatus === "ready") toggleAutoRotationRef.current?.();
+        }}
+      >
+        {motionControlLabel}
+      </button>
+      <canvas ref={canvasRef} className={styles.canvas} aria-hidden="true" />
+    </>
+  );
 }

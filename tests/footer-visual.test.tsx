@@ -156,7 +156,9 @@ describe("Footer visual treatment", () => {
     expect(markup).toContain("footer-video-media");
     expect(markup).toContain("/video/home-growth-cta.mp4");
     expect(markup).toContain("/images/home/home-growth-cta-poster.jpg");
-    expect(markup).toContain("autoPlay");
+    expect(markup).toContain('data-src="/video/home-growth-cta.mp4"');
+    expect(markup).toContain('preload="none"');
+    expect(markup).not.toMatch(/<video[^>]*\ssrc=/);
     expect(markup).toContain("muted");
     expect(markup).toContain("loop");
     expect(markup).toContain("playsInline");
