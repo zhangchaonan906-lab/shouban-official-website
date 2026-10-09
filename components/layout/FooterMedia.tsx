@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { DeferredFooterVideo } from "./DeferredFooterVideo";
 
 export function FooterMedia() {
   return (
@@ -10,18 +11,11 @@ export function FooterMedia() {
         sizes="100vw"
         className="footer-video-media__poster"
       />
-      <video
+      <DeferredFooterVideo
         className="footer-video-media__video"
-        autoPlay
-        muted
-        loop
-        playsInline
-        preload="metadata"
+        src="/video/home-growth-cta.mp4"
         poster="/images/home/home-growth-cta-poster.jpg"
-        tabIndex={-1}
-      >
-        <source src="/video/home-growth-cta.mp4" type="video/mp4" />
-      </video>
+      />
       <span className="footer-video-media__wash" />
     </div>
   );

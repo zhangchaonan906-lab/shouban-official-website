@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import Link from "next/link";
+import { preload } from "react-dom";
 import { curvedHeroCards } from "@/content/home";
 import { CurvedHeroScene } from "./CurvedHeroScene";
 import styles from "./CurvedHero.module.css";
@@ -8,6 +9,11 @@ const desktopCurveIndexes = Array.from({ length: 16 }, (_, index) => index);
 const mobileArcIndexes = Array.from({ length: 4 }, (_, index) => index);
 
 export function CurvedHero() {
+  preload("/images/home/home-hero-alwayzz.webp", {
+    as: "image",
+    fetchPriority: "high"
+  });
+
   return (
     <section
       className={styles.hero}

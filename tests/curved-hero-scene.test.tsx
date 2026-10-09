@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
-import { act, cleanup, render, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const sceneSpies = vi.hoisted(() => {
@@ -320,6 +321,58 @@ afterEach(() => {
 });
 
 describe("CurvedHeroScene", () => {
+  it("waits for keyboard activation on mobile before loading the 3D scene", async () => {
+    environment.setViewportWidth(390);
+    const user = userEvent.setup();
+    const { container } = render(
+      <CurvedHeroScene cards={curvedHeroCards} />
+    );
+    const startButton = screen.getByRole("button", { name: "启动 3D 展示" });
+
+    expect(getCanvas(container).hasAttribute("data-ready")).toBe(false);
+    expect(sceneSpies.createScene).not.toHaveBeenCalled();
+
+    await user.tab();
+    expect(document.activeElement).toBe(startButton);
+    await user.keyboard("{Enter}");
+
+    const pauseButton = await screen.findByRole("button", {
+      name: "暂停主视觉自动旋转"
+    });
+    expect(sceneSpies.createScene).toHaveBeenCalledOnce();
+    expect(pauseButton.textContent).toBe("暂停主视觉自动旋转");
+
+    await user.keyboard("{Enter}");
+    const resumeButton = screen.getByRole("button", {
+      name: "恢复主视觉自动旋转"
+    });
+    expect(resumeButton.textContent).toBe("恢复主视觉自动旋转");
+
+    await user.keyboard("{Enter}");
+    expect(
+      screen.getByRole("button", { name: "暂停主视觉自动旋转" })
+    ).toBe(pauseButton);
+  });
+
+  it("stops the animation frame loop when paused and restarts it when resumed", async () => {
+    const user = userEvent.setup();
+    await renderReadyScene();
+
+    await user.click(
+      screen.getByRole("button", { name: "暂停主视觉自动旋转" })
+    );
+
+    expect(environment.pendingFrames.size).toBe(0);
+    expect(environment.cancelFrame).toHaveBeenCalledWith(1);
+
+    await user.click(
+      screen.getByRole("button", { name: "恢复主视觉自动旋转" })
+    );
+
+    expect(environment.pendingFrames.size).toBe(1);
+    expect(environment.requestFrame).toHaveBeenCalledTimes(2);
+  });
+
   it("renders only the visual canvas without an image explanation", async () => {
     const { canvas, container } = await renderReadyScene();
 
@@ -418,6 +471,13 @@ describe("CurvedHeroScene", () => {
     expect(sceneSpies.createScene).not.toHaveBeenCalled();
     expect(environment.requestFrame).not.toHaveBeenCalled();
     expect(getCanvas(container).hasAttribute("data-ready")).toBe(false);
+    expect(
+      (
+        screen.getByRole("button", {
+          name: "主视觉动画已按系统设置停用"
+        }) as HTMLButtonElement
+      ).disabled
+    ).toBe(true);
   });
 
   it("keeps the fallback visible until the controller reports its textures ready", async () => {
