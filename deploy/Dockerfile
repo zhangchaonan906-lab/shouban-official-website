@@ -1,9 +1,9 @@
-FROM node:24-bookworm-slim AS deps
+FROM node:24-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20 AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
-FROM node:24-bookworm-slim AS builder
+FROM node:24-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20 AS builder
 WORKDIR /app
 ARG NEXT_PUBLIC_SITE_URL
 ARG BUILD_SHA=unknown
@@ -15,7 +15,7 @@ RUN test -n "$NEXT_PUBLIC_SITE_URL"
 RUN npm run build
 RUN node scripts/deployment/write-built-site-origin.mjs "$NEXT_PUBLIC_SITE_URL" .next/standalone-site-origin.txt
 
-FROM node:24-bookworm-slim AS runner
+FROM node:24-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20 AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1

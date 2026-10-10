@@ -275,9 +275,9 @@ describe("Aliyun standalone deployment invariants", () => {
     const compose = read("deploy/compose.website.yml");
     const entrypoint = read("scripts/deployment/start-standalone.mjs");
 
-    expect(dockerfile).toMatch(/FROM node:24-bookworm-slim AS deps/);
-    expect(dockerfile).toMatch(/FROM node:24-bookworm-slim AS builder/);
-    expect(dockerfile).toMatch(/FROM node:24-bookworm-slim AS runner/);
+    expect(dockerfile).toMatch(/FROM node:24-bookworm-slim@sha256:[a-f0-9]{64} AS deps/);
+    expect(dockerfile).toMatch(/FROM node:24-bookworm-slim@sha256:[a-f0-9]{64} AS builder/);
+    expect(dockerfile).toMatch(/FROM node:24-bookworm-slim@sha256:[a-f0-9]{64} AS runner/);
     expect(dockerfile).toContain("USER node:node");
     expect(dockerfile).toContain("ENTRYPOINT");
     expect(dockerfile).not.toMatch(/SMTP_(?:HOST|USER|PASS)/);
@@ -294,6 +294,39 @@ describe("Aliyun standalone deployment invariants", () => {
     expect(entrypoint).toContain("runGatedStart");
     expect(entrypoint.indexOf('["run", "release:check"]')).toBeGreaterThanOrEqual(0);
     expect(entrypoint).toContain('["server.js"]');
+  });
+
+  it("pins the exact Node 24 and Caddy 2.10.2 image indexes used by CI", () => {
+    const nodeImage =
+      "node:24-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20";
+    const caddyImage =
+      "caddy:2.10.2@sha256:c3d7ee5d2b11f9dc54f947f68a734c84e9c9666c92c88a7f30b9cba5da182adb";
+    const dockerfile = read("deploy/Dockerfile");
+    const workflow = read(".github/workflows/quality.yml");
+    const componentTest = read("scripts/deployment/ci-network-test.sh");
+    const nodeStages = dockerfile
+      .split(/\r?\n/)
+      .filter((line) => line.startsWith("FROM node:"));
+
+    expect(nodeStages).toHaveLength(3);
+    expect(nodeStages.every((line) => line.includes(nodeImage))).toBe(true);
+    expect(workflow).toContain(caddyImage);
+    expect(componentTest).toContain(caddyImage);
+  });
+
+  it("measures Caddy's 16 KiB request cap before a synthetic upstream", () => {
+    const componentTest = read("scripts/deployment/ci-network-test.sh");
+    const probe = read("tests/deployment-request-limit-probe.mjs");
+    const upstream = read("tests/fixtures/deployment-limit-upstream.mjs");
+
+    expect(componentTest).toContain("deployment-limit-upstream.mjs");
+    expect(componentTest).toContain("deployment-request-limit-probe.mjs");
+    expect(componentTest).toContain("CI_OVERSIZED_BODY_SENTINEL");
+    expect(componentTest).toContain("reverse_proxy shouban-ci-limit-upstream:3000");
+    expect(probe).toContain("Buffer.alloc(17_000, 120)");
+    expect(probe).toContain("status !== 413");
+    expect(probe).toContain("hitsAfter !== hitsBefore");
+    expect(upstream).toContain('request.url === "/__hits"');
   });
 
   it("keeps the Caddy site template isolated and preserves caching and body-size guards", () => {
@@ -321,8 +354,9 @@ describe("Aliyun standalone deployment invariants", () => {
 
     expect(workflow).toContain("Verify isolated Docker DNS proxy and Caddy log redaction");
     expect(workflow).toContain("scripts/deployment/ci-network-test.sh");
-    expect(workflow).toContain("caddy:2.10.2 fmt --diff");
-    expect(workflow).toContain("caddy:2.10.2 adapt");
+    expect(workflow).toContain('"$CADDY_TEST_IMAGE" fmt --diff');
+    expect(workflow).toContain('"$CADDY_TEST_IMAGE" adapt');
+    expect(workflow).toContain("--platform linux/amd64");
     expect(componentTest).toContain("CI-only component smoke test");
     expect(componentTest).toContain("docker network create --internal");
     expect(componentTest).toContain("--entrypoint node");
