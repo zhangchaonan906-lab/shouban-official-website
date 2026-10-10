@@ -19,7 +19,7 @@ jobs:
   verify:
     name: Verify
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     env:
       CI: true
       NEXT_TELEMETRY_DISABLED: 1
@@ -45,7 +45,81 @@ jobs:
         run: npm test
 
       - name: Build production site
+        env:
+          NEXT_PUBLIC_SITE_URL: https://deployment-validation.invalid
         run: npm run build
 
       - name: Audit dependencies
         run: npm audit
+
+      - name: Check deployment shell syntax
+        run: sh -n scripts/deployment/preflight.sh scripts/deployment/acceptance.sh
+      - name: Check isolated CI test syntax
+        run: |
+          bash -n scripts/deployment/ci-network-test.sh
+          python3 -c 'import ast, pathlib; ast.parse(pathlib.Path("tests/deployment-caddy-log-check.py").read_text())'
+
+      - name: Validate Compose deployment model and resource limits
+        run: |
+          docker compose --env-file deploy/ci.compose.env -f deploy/compose.website.yml config --quiet
+          docker compose --env-file deploy/ci.compose.env -f deploy/compose.website.yml config --format json |
+            jq -e '
+              .services.website.cpus == 1 and
+              (.services.website.mem_limit | tostring) == "1610612736" and
+              (.services.website.memswap_limit | tostring) == "1610612736" and
+              .services.website.pids_limit == 128 and
+              .services.website.read_only == true and
+              ((.services.website.ports // []) | length == 0)
+            ' >/dev/null
+
+      - name: Check Caddyfile formatting
+        run: |
+          for file in validate.Caddyfile shouban-site.caddy; do
+            docker run --rm --network none --entrypoint caddy \
+              --volume "$PWD/deploy/caddy:/etc/caddy:ro" \
+              caddy:2.10.2 fmt --diff "/etc/caddy/$file"
+          done
+
+      - name: Adapt and validate isolated Caddy site template
+        run: |
+          docker run --rm --network none --entrypoint caddy \
+            --env SHOUBAN_SITE_DOMAIN=deployment-validation.invalid \
+            --volume "$PWD/deploy/caddy:/etc/caddy:ro" \
+            caddy:2.10.2 adapt --config /etc/caddy/validate.Caddyfile --adapter caddyfile --pretty >/dev/null
+          docker run --rm --network none --entrypoint caddy \
+            --env SHOUBAN_SITE_DOMAIN=deployment-validation.invalid \
+            --volume "$PWD/deploy/caddy:/etc/caddy:ro" \
+            caddy:2.10.2 validate --config /etc/caddy/validate.Caddyfile --adapter caddyfile
+
+      - name: Build standalone container with a non-production fixture
+        run: |
+          docker build --pull \
+            --file deploy/Dockerfile \
+            --tag shouban-official-website:ci \
+            --build-arg NEXT_PUBLIC_SITE_URL=https://deployment-validation.invalid \
+            --build-arg BUILD_SHA="$GITHUB_SHA" \
+            .
+
+      - name: Verify isolated Docker DNS proxy and Caddy log redaction
+        run: bash scripts/deployment/ci-network-test.sh
+
+      - name: Verify missing production proof blocks container startup
+        run: |
+          set +e
+          timeout 20s docker run --rm --network none shouban-official-website:ci \
+            > "$RUNNER_TEMP/release-gate.log" 2>&1
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ] || [ "$status" -eq 124 ]; then
+            echo "Expected fail-closed startup to exit before the server listens."
+            exit 1
+          fi
+          if ! grep -q '^PRIVACY_CONFIG_MISSING ' "$RUNNER_TEMP/release-gate.log"; then
+            echo "Release-gate failure did not report the expected sanitized issue code."
+            exit 1
+          fi
+          if grep -q 'privacy release check passed' "$RUNNER_TEMP/release-gate.log"; then
+            echo "The incomplete CI fixture unexpectedly passed the release gate."
+            exit 1
+          fi
+          echo "Expected fail-closed startup verified."

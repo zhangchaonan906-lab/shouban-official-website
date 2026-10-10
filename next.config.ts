@@ -8,6 +8,7 @@ const noStoreHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   async headers() {
     return [
       { source: "/contact", headers: noStoreHeaders },
