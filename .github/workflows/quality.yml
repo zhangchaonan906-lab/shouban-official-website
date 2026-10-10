@@ -23,6 +23,7 @@ jobs:
     env:
       CI: true
       NEXT_TELEMETRY_DISABLED: 1
+      CADDY_TEST_IMAGE: caddy:2.10.2@sha256:c3d7ee5d2b11f9dc54f947f68a734c84e9c9666c92c88a7f30b9cba5da182adb
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -75,25 +76,25 @@ jobs:
       - name: Check Caddyfile formatting
         run: |
           for file in validate.Caddyfile shouban-site.caddy; do
-            docker run --rm --network none --entrypoint caddy \
+            docker run --rm --network none --platform linux/amd64 --entrypoint caddy \
               --volume "$PWD/deploy/caddy:/etc/caddy:ro" \
-              caddy:2.10.2 fmt --diff "/etc/caddy/$file"
+              "$CADDY_TEST_IMAGE" fmt --diff "/etc/caddy/$file"
           done
 
       - name: Adapt and validate isolated Caddy site template
         run: |
-          docker run --rm --network none --entrypoint caddy \
+          docker run --rm --network none --platform linux/amd64 --entrypoint caddy \
             --env SHOUBAN_SITE_DOMAIN=deployment-validation.invalid \
             --volume "$PWD/deploy/caddy:/etc/caddy:ro" \
-            caddy:2.10.2 adapt --config /etc/caddy/validate.Caddyfile --adapter caddyfile --pretty >/dev/null
-          docker run --rm --network none --entrypoint caddy \
+            "$CADDY_TEST_IMAGE" adapt --config /etc/caddy/validate.Caddyfile --adapter caddyfile --pretty >/dev/null
+          docker run --rm --network none --platform linux/amd64 --entrypoint caddy \
             --env SHOUBAN_SITE_DOMAIN=deployment-validation.invalid \
             --volume "$PWD/deploy/caddy:/etc/caddy:ro" \
-            caddy:2.10.2 validate --config /etc/caddy/validate.Caddyfile --adapter caddyfile
+            "$CADDY_TEST_IMAGE" validate --config /etc/caddy/validate.Caddyfile --adapter caddyfile
 
       - name: Build standalone container with a non-production fixture
         run: |
-          docker build --pull \
+          docker build --pull --platform linux/amd64 \
             --file deploy/Dockerfile \
             --tag shouban-official-website:ci \
             --build-arg NEXT_PUBLIC_SITE_URL=https://deployment-validation.invalid \
