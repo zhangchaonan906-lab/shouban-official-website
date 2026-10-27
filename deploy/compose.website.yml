@@ -11,6 +11,7 @@ services:
       PORT: "3000"
       NEXT_TELEMETRY_DISABLED: "1"
       NODE_OPTIONS: --max-old-space-size=1024
+      SHOUBAN_SITE_DOMAIN: ${SHOUBAN_SITE_DOMAIN:?Set the approved canonical hostname}
     env_file:
       - ${SHOUBAN_RUNTIME_ENV_FILE:?Set the protected runtime environment file path}
     read_only: true

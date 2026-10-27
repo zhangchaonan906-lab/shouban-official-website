@@ -138,14 +138,15 @@ npm.cmd run privacy:snapshot
 npm.cmd run release:check
 ```
 
-`release:check` 只校验配置格式和绑定，不能代替邮箱投递、权限、MFA、删除／备份、Nginx 或服务商位置的人工证据。当前项目尚无已经创建并验收的专用隐私邮箱、Lighthouse/Nginx 部署和运营人工证明，因此在普通／裸环境中运行该命令会按设计返回非零；这不是日常 `test`、`typecheck` 或 `build` 的失败。
+`release:check` 只校验配置格式和绑定，不能代替邮箱投递、权限、MFA、删除／备份、网关或服务商位置的人工证据。真实生产事实及证明尚未核验，因此在普通／裸环境中运行该命令会按设计返回非零；这不是日常 `test`、`typecheck` 或 `build` 的失败。
 
-支持的 `npm start` 路径会先自动运行 `prestart`，而 `prestart` 会执行同一个 `release:check`。未来使用 standalone `node server.js` 时不会自动触发 npm 生命周期，因此独立容器 entrypoint 必须先运行 `release:check`，成功后才能启动服务。
+支持的 `npm start` 路径自动运行 `prestart` 和 `release:check`；standalone 容器已使用专用 entrypoint，先检查发布就绪及构建/运行 Origin/域名一致性，再启动服务。生产不得直接覆盖入口运行 `node server.js`。
 
 ## 当前部署状态
 
-- 腾讯云 Lighthouse 北京地域 2 核 CPU／2 GB 内存目前只是选定目标，尚未创建或验收。
-- Next.js standalone 产物、容器 entrypoint、Nginx 配置、30 天日志轮转和原子流量切换仍属于独立部署工作。
+- 当前工程目标为现有阿里云 ALB 后的独立官网 Caddy 与 Next.js，不改造现有共享 Caddy或默认业务路由。
+- 已提供独立 HTTP 网关、首发维护配置、只读 preflight/acceptance、默认只计划的回滚 CLI 和默认不发送的 SMTP 探针。工具需要 Linux/Node 24/Docker Compose；本次不安装生产依赖或执行生产操作。
+- CI 仅验证合成隔离环境；真实 SMTP、DNS/证书、日志时间留存、资源基线和恢复演练仍须实际验收。单服务替换不承诺零中断。
 - EdgeOne 仍需人工开通、三路径缓存旁路、第 6 次请求验证和九字段证据；当前不得标记为已启用。
 - 专用隐私邮箱、邮件服务商位置、MFA／最小权限、删除／备份流程和运营人工证明均须按部署手册实际完成后，才能开放联系收集。
 
@@ -153,6 +154,7 @@ npm.cmd run release:check
 
 - [隐私就绪、保留与生产发布操作手册](docs/deployment/privacy-readiness.md)
 - [EdgeOne 联系接口防滥用配置](docs/deployment/edgeone-contact-protection.md)
+- [独立官网网关发布、验收与回滚](docs/deployment/isolated-website-gateway.md)
 
 ## 待公司内部确认
 

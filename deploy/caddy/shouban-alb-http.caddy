@@ -1,0 +1,76 @@
+{
+	admin off
+	auto_https off
+	log default {
+		output stderr
+		format filter {
+			wrap json
+			fields {
+				request delete
+				req delete
+				headers delete
+				resp_headers>Set-Cookie delete
+			}
+		}
+	}
+	servers {
+		trusted_proxies static {$SHOUBAN_TRUSTED_PROXY_CIDRS}
+		trusted_proxies_strict
+	}
+}
+
+:8080 {
+	log {
+		output stdout
+		format filter {
+			wrap json
+			fields {
+				request>headers delete
+				request>uri delete
+				request>body delete
+				request>remote_ip delete
+				request>client_ip delete
+				resp_headers>Set-Cookie delete
+			}
+		}
+	}
+
+	header -Server
+	header X-Content-Type-Options "nosniff"
+	header Referrer-Policy "strict-origin-when-cross-origin"
+
+	@local_health {
+		remote_ip 127.0.0.1 ::1
+		path /healthz
+		method GET HEAD
+	}
+	handle @local_health {
+		header Cache-Control "private, no-store, max-age=0"
+		respond "ok" 200
+	}
+
+	@alb {
+		remote_ip {$SHOUBAN_TRUSTED_PROXY_CIDRS}
+		host {$SHOUBAN_SITE_DOMAIN}
+	}
+	handle @alb {
+		@contact_post {
+			method POST
+			path /api/contact
+		}
+		request_body @contact_post {
+			max_size 16384
+		}
+
+		@private_no_store {
+			path /contact /contact/* /privacy /privacy/* /api/contact /api/contact/*
+		}
+		header @private_no_store >Cache-Control "private, no-store, max-age=0"
+		reverse_proxy shouban-website:3000
+	}
+
+	handle {
+		header Cache-Control "private, no-store, max-age=0"
+		respond "Forbidden" 403
+	}
+}

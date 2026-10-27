@@ -1,0 +1,59 @@
+services:
+  gateway:
+    image: ${SHOUBAN_GATEWAY_IMAGE:?Use the approved immutable Caddy image digest}
+    pull_policy: never
+    init: true
+    restart: unless-stopped
+    user: "1000:1000"
+    environment:
+      SHOUBAN_SITE_DOMAIN: ${SHOUBAN_SITE_DOMAIN:?Set the approved canonical hostname}
+      SHOUBAN_TRUSTED_PROXY_CIDRS: ${SHOUBAN_TRUSTED_PROXY_CIDRS:?Set the actual ALB source CIDRs}
+      HOME: /tmp
+      XDG_CONFIG_HOME: /config
+      XDG_DATA_HOME: /data
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=16m,mode=1777
+      - /config:rw,noexec,nosuid,nodev,size=8m,uid=1000,gid=1000,mode=0700
+      - /data:rw,noexec,nosuid,nodev,size=8m,uid=1000,gid=1000,mode=0700
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    cpus: 0.25
+    mem_limit: 128m
+    memswap_limit: 128m
+    pids_limit: 64
+    stop_grace_period: 10s
+    ports:
+      - target: 8080
+        published: "${SHOUBAN_GATEWAY_PORT:?Set the approved unprivileged backend port}"
+        host_ip: ${SHOUBAN_BIND_IP:?Bind only the approved ECS private IPv4 address}
+        protocol: tcp
+    volumes:
+      - type: bind
+        source: ${SHOUBAN_GATEWAY_CONFIG:?Use a versioned verified Caddyfile}
+        target: /etc/caddy/Caddyfile
+        read_only: true
+        bind:
+          create_host_path: false
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-T", "3", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      shouban-proxy:
+        aliases:
+          - shouban-gateway
+
+networks:
+  shouban-proxy:
+    external: true
+    name: ${SHOUBAN_PROXY_NETWORK:?Use the separately approved dedicated proxy network}

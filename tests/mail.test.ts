@@ -3,10 +3,16 @@ import {
   CONTACT_MAIL_NOT_CONFIGURED,
   sendContactEmail
 } from "../lib/mail";
+import {
+  CONTACT_MAIL_DELIVERY_FAILED,
+  CONTACT_MAIL_TIMEOUT,
+  CONTACT_MAIL_TIMEOUT_MS
+} from "../lib/mail-transport.mjs";
 
-const { createTransport, sendMail } = vi.hoisted(() => ({
+const { createTransport, sendMail, close } = vi.hoisted(() => ({
   createTransport: vi.fn(),
-  sendMail: vi.fn()
+  sendMail: vi.fn(),
+  close: vi.fn()
 }));
 
 vi.mock("nodemailer", () => ({
@@ -38,13 +44,15 @@ function stubSmtpEnv() {
 beforeEach(() => {
   createTransport.mockReset();
   sendMail.mockReset();
-  sendMail.mockResolvedValue(undefined);
-  createTransport.mockReturnValue({ sendMail });
+  close.mockReset();
+  sendMail.mockResolvedValue({ accepted: [smtpEnv.CONTACT_TO_EMAIL], rejected: [] });
+  createTransport.mockReturnValue({ sendMail, close });
   stubSmtpEnv();
 });
 
 afterEach(() => {
   vi.unstubAllEnvs();
+  vi.useRealTimers();
 });
 
 describe("sendContactEmail", () => {
@@ -133,4 +141,56 @@ describe("sendContactEmail", () => {
       expect(sendMail).not.toHaveBeenCalled();
     }
   );
+
+  it("bounds the SMTP connection and delivery, disables transport logging and closes it", async () => {
+    await sendContactEmail(contactEmail);
+
+    expect(createTransport).toHaveBeenCalledWith(expect.objectContaining({
+      tls: { minVersion: "TLSv1.2" },
+      connectionTimeout: 5_000,
+      greetingTimeout: 5_000,
+      socketTimeout: 10_000,
+      logger: false,
+      debug: false,
+      disableFileAccess: true,
+      disableUrlAccess: true
+    }));
+    expect(close).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not expose original SMTP errors", async () => {
+    sendMail.mockRejectedValue(new Error("private SMTP response with credential material"));
+
+    await expect(sendContactEmail(contactEmail)).rejects.toThrow(CONTACT_MAIL_DELIVERY_FAILED);
+    expect(close).toHaveBeenCalledTimes(1);
+  });
+
+  it("classifies an SMTP timeout without preserving the raw response", async () => {
+    sendMail.mockRejectedValue(Object.assign(new Error("private timeout response"), { code: "ETIMEDOUT" }));
+
+    await expect(sendContactEmail(contactEmail)).rejects.toThrow(CONTACT_MAIL_TIMEOUT);
+    expect(close).toHaveBeenCalledTimes(1);
+  });
+
+  it("stops an SMTP operation at the total deadline and closes the transport", async () => {
+    vi.useFakeTimers();
+    sendMail.mockReturnValue(new Promise(() => {}));
+    const operation = expect(sendContactEmail(contactEmail)).rejects.toThrow(CONTACT_MAIL_TIMEOUT);
+
+    await vi.advanceTimersByTimeAsync(CONTACT_MAIL_TIMEOUT_MS);
+    await operation;
+    expect(close).toHaveBeenCalledTimes(1);
+    expect(createTransport.mock.calls[0][0].socket.destroyed).toBe(true);
+  });
+
+  it.each([
+    { accepted: [], rejected: ["recipient@example.test"] },
+    { accepted: ["one@example.test"], rejected: ["two@example.test"] },
+    undefined
+  ])("rejects missing or partial SMTP acceptance", async (result) => {
+    sendMail.mockResolvedValue(result);
+
+    await expect(sendContactEmail(contactEmail)).rejects.toThrow(CONTACT_MAIL_DELIVERY_FAILED);
+    expect(close).toHaveBeenCalledTimes(1);
+  });
 });

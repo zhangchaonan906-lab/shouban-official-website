@@ -34,6 +34,8 @@ COPY --from=builder --chown=node:node /app/package.json ./package.json
 COPY --from=builder --chown=node:node /app/scripts/privacy-release-check.mjs ./scripts/privacy-release-check.mjs
 COPY --from=builder --chown=node:node /app/lib/privacy-readiness.mjs ./lib/privacy-readiness.mjs
 COPY --from=builder --chown=node:node /app/lib/privacy-policy.mjs ./lib/privacy-policy.mjs
+COPY --from=builder --chown=node:node /app/lib/mail-transport.mjs ./lib/mail-transport.mjs
+COPY --from=deps --chown=node:node /app/node_modules/nodemailer ./node_modules/nodemailer
 COPY --from=builder --chown=node:node /app/scripts/deployment ./scripts/deployment
 
 RUN install -d -o node -g node /app/.next/cache
