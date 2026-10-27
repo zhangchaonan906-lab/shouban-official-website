@@ -4,7 +4,7 @@ set -euo pipefail
 # CI-only synthetic ALB-source/Host boundary, maintenance and rootless gateway test.
 # No production endpoint, SMTP configuration, published host port or service entrypoint.
 website_image="${WEBSITE_IMAGE:-shouban-official-website:ci}"
-caddy_image="${CADDY_TEST_IMAGE:-caddy:2.10.2@sha256:c3d7ee5d2b11f9dc54f947f68a734c84e9c9666c92c88a7f30b9cba5da182adb}"
+caddy_image="${GATEWAY_TEST_IMAGE:-shouban-gateway:ci}"
 run_id="${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}"
 [[ "$run_id" =~ ^[a-zA-Z0-9-]+$ ]] || exit 1
 network="shouban-ci-gw-${run_id}"

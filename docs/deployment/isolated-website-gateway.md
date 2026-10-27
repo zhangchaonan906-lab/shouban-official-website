@@ -18,6 +18,8 @@
 
 TLS 在边缘/ALB 管理，独立 Caddy 明确 `auto_https off`，不签证书、不占旧80/443。应用运行环境的 `SHOUBAN_SITE_DOMAIN` 必须是正式域名，不能设为 `:8080`。代理头信任和来源限制必须结合真实 ALB 模式核对，禁止 `0.0.0.0/0`。
 
+网关镜像必须由 `deploy/gateway.Dockerfile` 构建：官方固定Caddy基础镜像的二进制携带低端口文件capability，与清空运行capability的边界会产生exec EPERM；派生镜像在构建期显式移除并检查文件capability，运行继续非root、cap_drop ALL和8080。不通过增加运行capability解决，不直接拿官方原镜像冒充已验证网关镜像。
+
 ## 2. 执行环境和发布包
 
 工具新增前置：目标 Linux 主机须有 Node.js 24、Docker Engine/Compose v2（支持 `up --wait`）、curl；执行身份须已获准读受保护配置并操作本机 Docker。这不是安装授权，本轮不安装任何生产组件。ECS 不运行 `npm ci` 或 `next build`。回滚 apply 固定使用本机 Unix Docker socket，不允许 DOCKER_HOST/context 将操作转向未知主机。
@@ -54,7 +56,7 @@ DNS只指向批准后的正式入口；使用边缘时指向其分配CNAME而不
 ```sh
 set -eu
 set +x
-: "${RELEASE_SHA:?}" "${REGISTRY_REPO:?}" "${SITE_ORIGIN:?}"
+: "${RELEASE_SHA:?}" "${REGISTRY_REPO:?}" "${GATEWAY_REGISTRY_REPO:?}" "${SITE_ORIGIN:?}"
 test "$(git rev-parse HEAD)" = "$RELEASE_SHA"
 test -z "$(git status --porcelain)"
 npm ci
@@ -65,9 +67,11 @@ NEXT_PUBLIC_SITE_URL="$SITE_ORIGIN" npm run build
 docker buildx build --pull --platform linux/amd64 -f deploy/Dockerfile \
   --build-arg NEXT_PUBLIC_SITE_URL="$SITE_ORIGIN" --build-arg BUILD_SHA="$RELEASE_SHA" \
   --tag "$REGISTRY_REPO:$RELEASE_SHA" --metadata-file image-metadata.json --push .
+docker buildx build --pull --platform linux/amd64 -f deploy/gateway.Dockerfile \
+  --tag "$GATEWAY_REGISTRY_REPO:$RELEASE_SHA" --metadata-file gateway-image-metadata.json --push .
 ```
 
-记录 `image-metadata.json` 的 `containerimage.digest`，使用 `registry/repository@sha256:<64位摘要>`，不用latest或仅SHA样式tag。Caddy采用已验证的固定digest；变更基础镜像/Caddy版本后重跑隔离测试。registry认证由批准发布身份提供，命令/工单不写凭证。
+记录两个metadata文件的 `containerimage.digest`，分别绑定网站和派生网关，使用 `registry/repository@sha256:<64位摘要>`，不用latest或仅SHA样式tag。Caddy基础采用已验证的固定digest；变更基础镜像/Caddy版本后重跑隔离测试。registry认证由批准发布身份提供，命令/工单不写凭证。
 
 目标主机先拉取批准的两个digest，准备版本包和0600 runtime文件。`SHOUBAN_TRUSTED_PROXY_CIDRS` 为空格分隔的真实ALB来源；不能把CI网段当生产值。将runtime、compose.env、两个manifest和选定Caddy配置的文件 SHA-256 记入release.json，再保护文件，校验后不得替换。
 

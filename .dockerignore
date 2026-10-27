@@ -15,6 +15,7 @@ deploy/*.env
 /config/
 /release.json
 /image-metadata.json
+/gateway-image-metadata.json
 *.pem
 *.key
 *.crt
