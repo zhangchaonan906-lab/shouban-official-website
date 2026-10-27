@@ -11,6 +11,10 @@ next-env.d.ts
 # Local configuration and credentials
 .env*
 !.env.example
+/config/
+/release.json
+/image-metadata.json
+/gateway-image-metadata.json
 *.pem
 *.key
 *.p12

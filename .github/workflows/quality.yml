@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - 'codex/**'
   pull_request:
     branches:
       - main
@@ -24,6 +25,7 @@ jobs:
       CI: true
       NEXT_TELEMETRY_DISABLED: 1
       CADDY_TEST_IMAGE: caddy:2.10.2@sha256:c3d7ee5d2b11f9dc54f947f68a734c84e9c9666c92c88a7f30b9cba5da182adb
+      GATEWAY_TEST_IMAGE: shouban-gateway:ci
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -57,25 +59,32 @@ jobs:
         run: sh -n scripts/deployment/preflight.sh scripts/deployment/acceptance.sh
       - name: Check isolated CI test syntax
         run: |
-          bash -n scripts/deployment/ci-network-test.sh
+          bash -n scripts/deployment/ci-network-test.sh scripts/deployment/ci-gateway-test.sh
           python3 -c 'import ast, pathlib; ast.parse(pathlib.Path("tests/deployment-caddy-log-check.py").read_text())'
 
       - name: Validate Compose deployment model and resource limits
         run: |
-          docker compose --env-file deploy/ci.compose.env -f deploy/compose.website.yml config --quiet
-          docker compose --env-file deploy/ci.compose.env -f deploy/compose.website.yml config --format json |
+          docker compose --env-file deploy/ci.compose.env -f deploy/compose.website.yml -f deploy/compose.gateway.yml config --quiet
+          docker compose --env-file deploy/ci.compose.env -f deploy/compose.website.yml -f deploy/compose.gateway.yml config --format json |
             jq -e '
               .services.website.cpus == 1 and
               (.services.website.mem_limit | tostring) == "1610612736" and
               (.services.website.memswap_limit | tostring) == "1610612736" and
               .services.website.pids_limit == 128 and
               .services.website.read_only == true and
-              ((.services.website.ports // []) | length == 0)
+              ((.services.website.ports // []) | length == 0) and
+              .services.gateway.user == "1000:1000" and
+              .services.gateway.read_only == true and
+              .services.gateway.ports[0].host_ip == "192.0.2.10" and
+              .services.gateway.ports[0].target == 8080 and
+              (.services.gateway.ports | length == 1) and
+              (.services.gateway.networks | keys) == ["shouban-proxy"]
             ' >/dev/null
+          node tests/deployment-compose-model-check.mjs
 
       - name: Check Caddyfile formatting
         run: |
-          for file in validate.Caddyfile shouban-site.caddy; do
+          for file in validate.Caddyfile shouban-site.caddy shouban-alb-http.caddy shouban-maintenance.caddy; do
             docker run --rm --network none --platform linux/amd64 --entrypoint caddy \
               --volume "$PWD/deploy/caddy:/etc/caddy:ro" \
               "$CADDY_TEST_IMAGE" fmt --diff "/etc/caddy/$file"
@@ -91,6 +100,19 @@ jobs:
             --env SHOUBAN_SITE_DOMAIN=deployment-validation.invalid \
             --volume "$PWD/deploy/caddy:/etc/caddy:ro" \
             "$CADDY_TEST_IMAGE" validate --config /etc/caddy/validate.Caddyfile --adapter caddyfile
+          for file in shouban-alb-http.caddy shouban-maintenance.caddy; do
+            docker run --rm --network none --platform linux/amd64 --entrypoint caddy \
+              --env SHOUBAN_SITE_DOMAIN=deployment-validation.invalid \
+              --env SHOUBAN_TRUSTED_PROXY_CIDRS=192.0.2.0/24 \
+              --volume "$PWD/deploy/caddy:/etc/caddy:ro" \
+              "$CADDY_TEST_IMAGE" validate --config "/etc/caddy/$file" --adapter caddyfile
+          done
+
+      - name: Build HTTP gateway without file capabilities
+        run: |
+          docker build --pull --platform linux/amd64 -f deploy/gateway.Dockerfile --tag "$GATEWAY_TEST_IMAGE" .
+          docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges:true --entrypoint caddy \
+            "$GATEWAY_TEST_IMAGE" version
 
       - name: Build standalone container with a non-production fixture
         run: |
@@ -103,6 +125,14 @@ jobs:
 
       - name: Verify isolated Docker DNS proxy and Caddy log redaction
         run: bash scripts/deployment/ci-network-test.sh
+
+      - name: Verify isolated ALB gateway and first-release maintenance
+        run: bash scripts/deployment/ci-gateway-test.sh
+
+      - name: Verify packaged SMTP probe defaults to no delivery
+        run: |
+          docker run --rm --network none --entrypoint node shouban-official-website:ci \
+            /app/scripts/deployment/smtp-probe.mjs | grep -q '^SMTP_PROBE_DRY_RUN'
 
       - name: Verify missing production proof blocks container startup
         run: |

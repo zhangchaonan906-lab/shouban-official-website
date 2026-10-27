@@ -10,6 +10,12 @@ deploy/*.env
 .env
 .env.*
 !.env.example
+**/runtime.env
+**/compose.env
+/config/
+/release.json
+/image-metadata.json
+/gateway-image-metadata.json
 *.pem
 *.key
 *.crt

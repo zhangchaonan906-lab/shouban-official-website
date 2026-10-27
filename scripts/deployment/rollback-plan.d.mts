@@ -1,38 +1,40 @@
-type RollbackFailureCode =
-  | "ROLLBACK_PREVIOUS_RELEASE_MISSING"
-  | "ROLLBACK_IMAGE_REFERENCE_INVALID"
-  | "ROLLBACK_IMAGE_REFERENCE_NOT_DIGEST"
-  | "ROLLBACK_RUNTIME_CONFIG_INVALID"
-  | "ROLLBACK_COMPOSE_INPUT_INVALID";
-
-type PreviousReleaseInput = {
-  image: unknown;
-  runtimeEnvFile: unknown;
-  runtimeEnvSha256: unknown;
+export type RollbackFailure = { ok: false; code: string };
+export type ReleaseFile = { path: string; sha256: string };
+export type ReleaseDescriptor = {
+  schemaVersion: 1;
+  project: "shouban-prod";
+  releaseId: string;
+  mode: "website" | "maintenance";
+  siteOrigin: string;
+  siteDomain: string;
+  proxyNetwork: string;
+  privateBindIp: string;
+  gatewayPort: number;
+  albDnsName: string;
+  trustedProxyCidrs: string[];
+  websiteImage?: string;
+  gatewayImage: string;
+  files: { runtimeEnv?: ReleaseFile; composeEnv: ReleaseFile; websiteManifest: ReleaseFile; gatewayManifest: ReleaseFile; gatewayConfig: ReleaseFile };
 };
-
-type RollbackPlan =
-  | { ok: false; code: RollbackFailureCode }
-  | {
-      ok: true;
-      selectedRelease: {
-        image: string;
-        runtimeEnvFile: string;
-        runtimeEnvSha256: string;
-      };
-      runtimeConfigVerification: { path: string; sha256: string };
-      environment: {
-        SHOUBAN_IMAGE: string;
-        SHOUBAN_RUNTIME_ENV_FILE: string;
-        SHOUBAN_PROXY_NETWORK: string;
-      };
-      command: "env";
-      commandArgs: string[];
-      requiresHumanApproval: true;
-    };
-
-export function createRollbackPlan(options: {
-  previousRelease?: PreviousReleaseInput | null;
-  composeFile?: unknown;
-  proxyNetwork?: unknown;
-} | null): RollbackPlan;
+export type RollbackPlan = {
+  ok: true;
+  descriptor: ReleaseDescriptor;
+  descriptorPath: string;
+  releaseRoot: string;
+  environment: Record<string, string>;
+  services: string[];
+  steps: { name: string; args: string[] }[];
+  requiresApply: true;
+};
+export type RollbackIo = {
+  platform: string;
+  uid: number;
+  lstatSync: (path: string) => { uid: number; mode: number; size: number; nlink: number; isSymbolicLink(): boolean; isDirectory(): boolean; isFile(): boolean };
+  realpathSync: (path: string) => string;
+  readFileSync: (path: string, encoding?: string) => any;
+};
+export function createRollbackPlan(options: { descriptor?: unknown; descriptorPath?: unknown; previousRelease?: { image: unknown; runtimeEnvFile: unknown; runtimeEnvSha256: unknown } | null; composeFile?: unknown; proxyNetwork?: unknown } | null): RollbackPlan | RollbackFailure;
+export function loadRollbackPlan(descriptorPath: string, io?: RollbackIo): RollbackPlan | RollbackFailure;
+export function verifyRollbackFiles(plan: RollbackPlan, io?: RollbackIo): { ok: true } | RollbackFailure;
+export function verifyRollbackComposeModel(plan: RollbackPlan, model: unknown): boolean;
+export function executeRollback(plan: RollbackPlan, options?: { apply?: boolean; run?: (command: string, args: string[], options: Record<string, unknown>) => { status: number | null; stdout?: string; signal?: unknown; error?: unknown }; verifyFiles?: (plan: RollbackPlan) => { ok: true } | RollbackFailure }): { ok: true; applied: boolean; code: string; mode: string; services: string[] } | RollbackFailure;

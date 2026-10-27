@@ -134,7 +134,7 @@ describe("Aliyun standalone deployment invariants", () => {
     await expect(isHealthy(throwingFetch)).resolves.toBe(false);
   });
 
-  it("binds a prior digest image to its exact versioned runtime config", () => {
+  it("rejects an incomplete legacy rollback even with an immutable image", () => {
     const previousRelease = {
       image: "registry.invalid/site@sha256:" + "a".repeat(64),
       runtimeEnvFile: "/etc/shouban/releases/v17/runtime.env",
@@ -146,36 +146,7 @@ describe("Aliyun standalone deployment invariants", () => {
       proxyNetwork: "shouban-proxy"
     });
 
-    expect(plan.ok).toBe(true);
-    if (!plan.ok) throw new Error("valid previous release rejected");
-    expect(plan.requiresHumanApproval).toBe(true);
-    expect(plan.selectedRelease).toEqual(previousRelease);
-    expect(plan.environment).toEqual({
-      SHOUBAN_IMAGE: previousRelease.image,
-      SHOUBAN_RUNTIME_ENV_FILE: previousRelease.runtimeEnvFile,
-      SHOUBAN_PROXY_NETWORK: "shouban-proxy"
-    });
-    expect(plan.runtimeConfigVerification).toEqual({
-      path: previousRelease.runtimeEnvFile,
-      sha256: previousRelease.runtimeEnvSha256
-    });
-    expect(plan.command).toBe("env");
-    expect(plan.commandArgs).toEqual([
-      `SHOUBAN_IMAGE=${previousRelease.image}`,
-      `SHOUBAN_RUNTIME_ENV_FILE=${previousRelease.runtimeEnvFile}`,
-      "SHOUBAN_PROXY_NETWORK=shouban-proxy",
-      "docker",
-      "compose",
-      "-f",
-      "/opt/site/compose.website.yml",
-      "up",
-      "-d",
-      "--no-build",
-      "--no-deps",
-      "website"
-    ]);
-    expect(plan.commandArgs).not.toContain("down");
-    expect(plan.commandArgs).not.toContain("--env-file");
+    expect(plan).toEqual({ ok: false, code: "ROLLBACK_LEGACY_DESCRIPTOR_REQUIRED" });
   });
 
   it("rejects mutable SHA-looking tags and digest references", () => {
@@ -384,18 +355,17 @@ describe("Aliyun standalone deployment invariants", () => {
 
     expect(acceptance).not.toMatch(/(?:--request| -X )\s*POST/);
     expect(acceptance).not.toMatch(/--data(?:-binary)?/);
-    expect(preflight).toContain("PREFLIGHT_ASSISTANT_ON_WEBSITE_NETWORK");
+    expect(preflight).toContain("deployment-checks.mjs");
   });
 
   it("documents an immutable image rollback without destructive project cleanup", () => {
-    const runbook = read("docs/deployment/alibaba-cloud-shared-ecs.md");
+    const runbook = read("docs/deployment/isolated-website-gateway.md");
 
     expect(runbook).toContain("registry/repository@sha256:<64位摘要>");
     expect(runbook).toContain("SHOUBAN_RUNTIME_ENV_FILE");
-    expect(runbook).toContain("env SHOUBAN_IMAGE=<上一版 digest>");
     expect(runbook).toContain("文件 SHA-256");
     expect(runbook).toContain("不执行 `docker compose down`");
     expect(runbook).toContain("回滚");
-    expect(runbook).toContain("业务负责人");
+    expect(runbook).toContain("授权负责人");
   });
 });
