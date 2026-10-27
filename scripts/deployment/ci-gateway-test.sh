@@ -54,7 +54,22 @@ docker network connect --alias shouban-gateway-untrusted "$untrusted_network" "$
 for name in "$gateway" "$maintenance"; do
   ready=0
   for _ in $(seq 1 30); do
-    if docker exec "$name" wget -q -T 3 -O /dev/null http://127.0.0.1:8080/healthz; then
+    if [ "$(docker inspect --format '{{.State.Status}}' "$name")" != running ]; then
+      # This is a throwaway CI container before any probe has sent data. Keep
+      # bootstrap diagnostics bounded and never inspect environment values.
+      docker logs --tail 20 "$name" 2>&1 | python3 -c '
+import json, sys
+for line in sys.stdin:
+    try:
+        item = json.loads(line)
+        print("CI_GATEWAY_BOOTSTRAP", json.dumps({key: item[key] for key in ("level", "logger", "msg", "error") if key in item}))
+    except (ValueError, TypeError):
+        print("CI_GATEWAY_BOOTSTRAP", line.strip()[:400])
+'
+      echo CI_GATEWAY_EXITED_BEFORE_HEALTH >&2
+      exit 1
+    fi
+    if docker exec "$name" wget -q -T 3 -O /dev/null http://127.0.0.1:8080/healthz >/dev/null 2>&1; then
       ready=1
       break
     fi
