@@ -176,7 +176,8 @@ export function verifyRollbackComposeModel(plan, model) {
       } else {
         const p = service.ports;
         const v = service.volumes;
-        if (service.image !== plan.descriptor.gatewayImage || !Array.isArray(p) || p.length !== 1 || p[0].host_ip !== plan.descriptor.privateBindIp || String(p[0].published) !== String(plan.descriptor.gatewayPort) || p[0].target !== 8080 || p[0].protocol !== "tcp" || !Array.isArray(v) || v.length !== 1 || v[0].type !== "bind" || v[0].source !== plan.descriptor.files.gatewayConfig.path || v[0].target !== "/etc/caddy/Caddyfile" || v[0].read_only !== true || v[0].bind?.create_host_path !== false || service.environment?.SHOUBAN_SITE_DOMAIN !== plan.descriptor.siteDomain || service.environment?.SHOUBAN_TRUSTED_PROXY_CIDRS !== plan.descriptor.trustedProxyCidrs.join(" ")) return false;
+        // Compose omits false create_host_path during JSON normalization.
+        if (service.image !== plan.descriptor.gatewayImage || !Array.isArray(p) || p.length !== 1 || p[0].host_ip !== plan.descriptor.privateBindIp || String(p[0].published) !== String(plan.descriptor.gatewayPort) || p[0].target !== 8080 || p[0].protocol !== "tcp" || !Array.isArray(v) || v.length !== 1 || v[0].type !== "bind" || v[0].source !== plan.descriptor.files.gatewayConfig.path || v[0].target !== "/etc/caddy/Caddyfile" || v[0].read_only !== true || (v[0].bind?.create_host_path !== undefined && v[0].bind.create_host_path !== false) || service.environment?.SHOUBAN_SITE_DOMAIN !== plan.descriptor.siteDomain || service.environment?.SHOUBAN_TRUSTED_PROXY_CIDRS !== plan.descriptor.trustedProxyCidrs.join(" ")) return false;
       }
     }
     return true;

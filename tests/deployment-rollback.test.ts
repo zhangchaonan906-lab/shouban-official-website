@@ -86,6 +86,16 @@ function fixture(mode: "website" | "maintenance" = "website") {
 }
 
 describe("protected grouped release rollback", () => {
+  it("accepts Compose's omitted false bind flag while rejecting host path creation", () => {
+    const f = fixture();
+    const volumes = f.model.services.gateway.volumes;
+    if (!volumes) throw new Error("gateway fixture missing");
+    Reflect.deleteProperty(volumes[0].bind, "create_host_path");
+    expect(verifyRollbackComposeModel(f.plan, f.model)).toBe(true);
+    volumes[0].bind.create_host_path = true;
+    expect(verifyRollbackComposeModel(f.plan, f.model)).toBe(false);
+  });
+
   it("loads and checks a protected versioned group without invoking Docker by default", () => {
     const f = fixture();
     const run = vi.fn();

@@ -21,11 +21,13 @@ try {
     proxyCidrs: [fixture.SHOUBAN_TRUSTED_PROXY_CIDRS]
   };
   for (const maintenance of [false, true]) {
-    const args = ["compose", "--project-name", "shouban-prod", "--env-file", "deploy/ci.compose.env"];
+    const args = ["--project-name", "shouban-prod", "--env-file", "deploy/ci.compose.env"];
+    const binary = process.env.CI_COMPOSE_TEST_BINARY ?? "docker";
+    if (!process.env.CI_COMPOSE_TEST_BINARY) args.unshift("compose");
     if (!maintenance) args.push("-f", "deploy/compose.website.yml");
     args.push("-f", "deploy/compose.gateway.yml", "config", "--format", "json");
-    const result = spawnSync("docker", args, { encoding: "utf8", timeout: 20000 });
-    if (result.status !== 0) throw new Error();
+    const result = spawnSync(binary, args, { encoding: "utf8", timeout: 20000 });
+    if (result.status !== 0) throw new Error("CI_COMPOSE_RENDER_FAILED");
     const model = JSON.parse(result.stdout);
     if (!maintenance) validateDeploymentModel(model, config);
     const plan = {
@@ -38,10 +40,24 @@ try {
         files: { gatewayConfig: { path: config.gatewayConfig } }
       }
     };
-    if (!verifyRollbackComposeModel(plan, model)) throw new Error();
+    if (!verifyRollbackComposeModel(plan, model)) {
+      // Boolean-only diagnostics. Never print the resolved model or its env.
+      const gateway = model.services.gateway;
+      process.stderr.write(JSON.stringify({
+        maintenance,
+        bindSourceMatches: gateway.volumes?.[0]?.source === config.gatewayConfig,
+        createHostPathPresent: Object.hasOwn(gateway.volumes?.[0]?.bind ?? {}, "create_host_path"),
+        createHostPathFalse: gateway.volumes?.[0]?.bind?.create_host_path === false,
+        tmpfsIsArray: Array.isArray(gateway.tmpfs),
+        healthMatches: JSON.stringify(gateway.healthcheck?.test) === JSON.stringify(["CMD", "wget", "-q", "-T", "3", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"])
+      }) + "\n");
+      throw new Error(maintenance ? "CI_COMPOSE_MAINTENANCE_MODEL_REJECTED" : "CI_COMPOSE_WEBSITE_MODEL_REJECTED");
+    }
   }
   process.stdout.write("CI_REAL_COMPOSE_TOOL_VALIDATORS_OK\n");
-} catch {
-  process.stderr.write("CI_REAL_COMPOSE_TOOL_VALIDATORS_FAILED\n");
+} catch (error) {
+  const code = error?.code ?? error?.message;
+  process.stderr.write((typeof code === "string" && /^(?:PREFLIGHT|CI_COMPOSE)_[A-Z_]+$/.test(code)
+    ? code : "CI_REAL_COMPOSE_TOOL_VALIDATORS_FAILED") + "\n");
   process.exitCode = 1;
 }
